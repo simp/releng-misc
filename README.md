@@ -1,4 +1,3 @@
-─
 # releng-misc
 
 <!-- vim-markdown-toc GFM -->
