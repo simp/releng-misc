@@ -26,79 +26,150 @@
 # the License.
 #
 require 'tmpdir'
+require 'optparse'
+require 'ostruct'
 
-USAGE="#{$0} <directory with SIMP RPMs>"
+USAGE="#{$0} [options] <directory with SIMP RPMs>"
 
-tgt_dir = ARGV.first
+def parse_options
+  options = OpenStruct.new
+  options.report_type = 'invalid'
 
-unless tgt_dir
-  $stderr.puts(USAGE)
-  exit 1
+  _opts = OptionParser.new do |opts|
+    opts.banner = USAGE
+
+    opts.separator ""
+
+    opts.on(
+      '-t REPORT_TYPE',
+      '--report-type REPORT_TYPE',
+      'Output a report of this type. May be one of:',
+      '  * invalid (default)',
+      '  * valid'
+    ) do |arg|
+      valid_reports = [
+        'invalid',
+        'valid'
+      ]
+
+      unless valid_reports.include?(arg)
+        $stderr.puts("Error: report-type must be one of:\n  * #{valid_reports.join("\n  * ")}")
+        exit 1
+      end
+
+      options.report_type = arg.strip
+    end
+  end
+
+  begin
+    _opts.parse!(ARGV)
+  rescue OptionParser::ParseError => e
+    puts e
+    puts _opts
+    exit 1
+  end
+
+  tgt_dir = ARGV.first
+
+  unless tgt_dir
+    $stderr.puts(USAGE)
+    exit 1
+  end
+
+  unless File.directory?(tgt_dir)
+    $stderr.puts("Could not find directory at #{tgt_dir}")
+    $stderr.puts(USAGE)
+    exit 1
+  end
+
+  options.target_dir = File.absolute_path(tgt_dir)
+
+  return options
 end
 
-unless File.directory?(tgt_dir)
-  $stderr.puts("Could not find directory at #{tgt_dir}")
-  $stderr.puts(USAGE)
-  exit 1
-end
+def extract_gpgkeys(tgt_dir)
+  gpgkeys_rpm = File.absolute_path(`find #{tgt_dir} -name "simp-gpgkeys*.rpm"`.lines.first.strip)
 
-tgt_dir = File.absolute_path(tgt_dir)
+  unless File.file?(gpgkeys_rpm)
+    $stderr.puts("Could not find simp-gpgkeys RPM at #{tgt_dir}")
+    exit 1
+  end
 
-gpgkeys_rpm = File.absolute_path(`find #{tgt_dir} -name "simp-gpgkeys*.rpm"`.lines.first.strip)
+  valid_sigs = {}
 
-unless File.file?(gpgkeys_rpm)
-  $stderr.puts("Could not find simp-gpgkeys RPM at #{tgt_dir}")
-  exit 1
-end
+  Dir.mktmpdir do |dir|
+    %x{rpm2cpio #{gpgkeys_rpm} | cpio -id -D #{dir} 2>/dev/null}
 
-rpms = (`find #{tgt_dir} -name "*.rpm"`).lines.map{|f| File.absolute_path(f.strip)}
+    %x{find #{dir} -name "RPM-GPG-KEY*"}.lines.each do |vendor_key|
+      key_attrs = %x{gpg2 -q --with-subkey-fingerprints --with-key-data #{vendor_key}}.lines.map(&:strip)
 
-valid_sigs = {}
+      uid = key_attrs.select{ |x| x.start_with?('uid:') }.first.split(':')[-1]
 
-Dir.mktmpdir do |dir|
-  %x{rpm2cpio #{gpgkeys_rpm} | cpio -id -D #{dir} 2>/dev/null}
+      key_attrs.select { |x| x.start_with?('pub:') || x.start_with?('sub:') }.each do |entry|
+        sig = entry.split(':')[4]
 
-  %x{find #{dir} -name "RPM-GPG-KEY*"}.lines.each do |vendor_key|
-    key_attrs = %x{gpg2 -q --with-subkey-fingerprints --with-key-data #{vendor_key}}.lines.map(&:strip)
-
-    uid = key_attrs.select{ |x| x.start_with?('uid:') }.first.split(':')[-1]
-
-    key_attrs.select { |x| x.start_with?('pub:') || x.start_with?('sub:') }.each do |entry|
-      sig = entry.split(':')[4]
-
-      if sig
-        valid_sigs[sig.upcase] = uid
+        if sig
+          valid_sigs[sig.upcase] = uid
+        end
       end
     end
   end
+
+  return valid_sigs
 end
 
-invalid_rpms = {}
+def process_rpms(tgt_dir, valid_sigs)
+  rpm_metadata = {
+    :valid => {},
+    :invalid => {}
+  }
 
-rpms.each do |rpm|
-  rpm_info = %x{rpm -qp --qf '%{NAME}-%{VERSION}-%{RELEASE} %{SIGPGP:pgpsig} %{SIGGPG:pgpsig}\\n' #{rpm} 2>/dev/null}
+  rpms = (`find #{tgt_dir} -type f -name "*.rpm"`).lines.map{|f| File.absolute_path(f.strip)}
 
-  rpm_name = rpm_info.split(/\s+/).first
+  rpms.each do |rpm|
+    rpm_info = %x{rpm -qp --qf '%{NAME}-%{VERSION}-%{RELEASE} %{SIGPGP:pgpsig} %{SIGGPG:pgpsig}\\n' #{rpm} 2>/dev/null}
 
-  if rpm_info =~ /Key ID (\S+)/
-    key_id = $1.upcase
+    rpm_name = rpm_info.split(/\s+/).first
 
-    unless valid_sigs[key_id]
-      invalid_rpms[rpm_name] = "Unknown Key => #{key_id}"
+    if rpm_info =~ /Key ID (\S+)/
+      key_id = $1.upcase
+
+      if valid_sigs[key_id]
+        rpm_metadata[:valid][valid_sigs[key_id]] ||= []
+        rpm_metadata[:valid][valid_sigs[key_id]] << "#{key_id} => #{rpm_name}"
+      else
+        rpm_metadata[:invalid][rpm_name] = "Unknown Key => #{key_id}"
+      end
+    else
+      rpm_metadata[:invalid][rpm_name] = 'Not Signed'
     end
-  else
-    invalid_rpms[rpm_name] = 'Not Signed'
+  end
+
+  return rpm_metadata
+end
+
+options = parse_options
+
+valid_sigs = extract_gpgkeys(options.target_dir)
+rpm_metadata = process_rpms(options.target_dir, valid_sigs)
+
+if options.report_type == 'valid'
+  rpm_metadata[:valid].each do |k,v|
+    puts %{* #{k}\n\n  - #{v.join("\n  - ")}}
+    puts "\n"
   end
 end
 
-if invalid_rpms.empty?
-  puts 'No invalid RPMs found!'
-else
-  puts 'Invalid RPMs:'
+if options.report_type == 'invalid'
+  if rpm_metadata[:invalid].empty?
+    puts 'No invalid RPMs found!'
+  else
+    puts 'Invalid RPMs:'
 
-  invalid_rpms.map do |k,v|
-    puts "* #{k}: #{v}"
+    rpm_metadata[:invalid].each do |k,v|
+      puts "* #{k}: #{v}"
+    end
+
+    exit 2
   end
-
-  exit 2
 end
