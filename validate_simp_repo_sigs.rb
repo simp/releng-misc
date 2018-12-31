@@ -45,11 +45,13 @@ def parse_options
       '--report-type REPORT_TYPE',
       'Output a report of this type. May be one of:',
       '  * invalid (default)',
-      '  * valid'
+      '  * valid',
+      '  * unused_keys',
     ) do |arg|
       valid_reports = [
         'invalid',
-        'valid'
+        'valid',
+        'unused_keys'
       ]
 
       unless valid_reports.include?(arg)
@@ -135,8 +137,12 @@ def process_rpms(tgt_dir, valid_sigs)
       key_id = $1.upcase
 
       if valid_sigs[key_id]
-        rpm_metadata[:valid][valid_sigs[key_id]] ||= []
-        rpm_metadata[:valid][valid_sigs[key_id]] << "#{key_id} => #{rpm_name}"
+        rpm_metadata[:valid][valid_sigs[key_id]] ||= {
+          :key  => key_id,
+          :rpms => []
+        }
+
+        rpm_metadata[:valid][valid_sigs[key_id]][:rpms] << rpm_name
       else
         rpm_metadata[:invalid][rpm_name] = "Unknown Key => #{key_id}"
       end
@@ -155,7 +161,7 @@ rpm_metadata = process_rpms(options.target_dir, valid_sigs)
 
 if options.report_type == 'valid'
   rpm_metadata[:valid].each do |k,v|
-    puts %{* #{k}\n\n  - #{v.join("\n  - ")}}
+    puts %{* #{k} #{v[:key]}\n\n  - #{v[:rpms].join("\n  - ")}}
     puts "\n"
   end
 end
@@ -171,5 +177,29 @@ if options.report_type == 'invalid'
     end
 
     exit 2
+  end
+end
+
+if options.report_type == 'unused_keys'
+  used_sigs = []
+
+  rpm_metadata[:valid].each do |k,v|
+    used_sigs << valid_sigs.select do |sig_k, sig_v|
+      sig_v == k
+    end.map(&:first)
+  end
+
+  used_sigs = used_sigs.flatten.uniq
+
+  unused_sigs = (valid_sigs.keys - used_sigs)
+
+  if unused_sigs.empty?
+    puts 'All Keys Used'
+  else
+    puts 'Unused Keys:'
+
+    unused_sigs.each do |sig|
+      puts "  * #{sig} => #{valid_sigs[sig]}"
+    end
   end
 end
