@@ -44,14 +44,18 @@ def parse_options
       '-t REPORT_TYPE',
       '--report-type REPORT_TYPE',
       'Output a report of this type. May be one of:',
-      '  * invalid (default)',
-      '  * valid',
-      '  * unused_keys',
+      '  * invalid (default) => Unrecognized RPMs',
+      '  * valid             => Recognized RPMs',
+      '  * unused_keys       => GPG keys that do not match any package',
+      '  * simp              => SIMP Packages',
+      '  * simp_deps         => SIMP Dependency Packages'
     ) do |arg|
       valid_reports = [
         'invalid',
         'valid',
-        'unused_keys'
+        'unused_keys',
+        'simp',
+        'simp_deps'
       ]
 
       unless valid_reports.include?(arg)
@@ -201,5 +205,36 @@ if options.report_type == 'unused_keys'
     unused_sigs.each do |sig|
       puts "  * #{sig} => #{valid_sigs[sig]}"
     end
+  end
+end
+
+if options.report_type == 'simp' || options.report_type == 'simp_deps'
+
+  # We signed it
+  uid_match = Regexp.new('.+@simp-project.org')
+
+  # Exclude main vendor packages (they should go in the archived versions but
+  # aren't part of the deps repo
+  uid_exclude = Regexp.new('.+@(fedora|centos)')
+
+  rpms = {
+    :simp => [],
+    :simp_deps => []
+  }
+
+  rpm_metadata[:valid].each do |k,v|
+    if uid_match.match(k)
+      rpms[:simp] += v[:rpms]
+    elsif !uid_exclude.match(k)
+      rpms[:simp_deps] += v[:rpms]
+    end
+  end
+
+  if options.report_type == 'simp'
+    puts rpms[:simp].join("\n")
+  end
+
+  if options.report_type == 'simp_deps'
+    puts rpms[:simp_deps].join("\n")
   end
 end
