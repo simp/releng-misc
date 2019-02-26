@@ -34,6 +34,7 @@ USAGE="#{$0} [options] <directory with SIMP RPMs>"
 def parse_options
   options = OpenStruct.new
   options.report_type = 'invalid'
+  options.quiet = false
 
   _opts = OptionParser.new do |opts|
     opts.banner = USAGE
@@ -44,18 +45,20 @@ def parse_options
       '-t REPORT_TYPE',
       '--report-type REPORT_TYPE',
       'Output a report of this type. May be one of:',
-      '  * invalid (default) => Unrecognized RPMs',
-      '  * valid             => Recognized RPMs',
+      '  * invalid (default) => Invalid RPMs',
+      '  * valid             => Valid RPMs',
       '  * unused_keys       => GPG keys that do not match any package',
-      '  * simp              => SIMP Packages',
-      '  * simp_deps         => SIMP Dependency Packages'
+      '  * simp_pkgs         => List SIMP Packages',
+      '  * simp_dep_pkgs     => List SIMP Dependency Packages',
+      '  * other_pkgs        => List Other Vendor Packages'
     ) do |arg|
       valid_reports = [
         'invalid',
         'valid',
         'unused_keys',
-        'simp',
-        'simp_deps'
+        'simp_pkgs',
+        'simp_dep_pkgs',
+        'other_pkgs'
       ]
 
       unless valid_reports.include?(arg)
@@ -64,6 +67,14 @@ def parse_options
       end
 
       options.report_type = arg.strip
+    end
+
+    opts.on(
+      '-q', '--quiet',
+      'No output, returns 1 if invalid RPMs present, 0 otherwise',
+      'All other options are ignored'
+    ) do
+      options.quiet = true
     end
   end
 
@@ -124,34 +135,92 @@ def extract_gpgkeys(tgt_dir)
   return valid_sigs
 end
 
+def valid_build_host?(to_cmp)
+  valid_build_hosts = [
+    # SIMP Build Host
+    '.*\.simp\.dev$',
+    '.*\.simp-project\.net$',
+    '.*\.simp-project\.com$',
+    # EPEL
+    '.*\.fedoraproject\.org$',
+    # Puppet
+    '.*\.puppetlabs\.net$',
+    '\.puppetlabs\.lan$',
+    '^mesos-jenkins-',
+    # CentOS
+    '.*\.centos\.org$',
+    # PostgreSQL
+    '^koji-centos'
+  ]
+
+  valid_build_hosts.each do |pattern|
+    return true if to_cmp =~ /#{pattern}/
+  end
+
+  return false
+end
+
 def process_rpms(tgt_dir, valid_sigs)
   rpm_metadata = {
-    :valid => {},
-    :invalid => {}
+    :valid    => {},
+    :invalid  => {},
+    :rpm_type => {
+      :simp      => [],
+      :simp_deps => [],
+      :other     => []
+    }
   }
 
   rpms = (`find #{tgt_dir} -type f -name "*.rpm"`).lines.map{|f| File.absolute_path(f.strip)}
 
+  fieldsep = '|'
+
   rpms.each do |rpm|
-    rpm_info = %x{rpm -qp --qf '%{NAME}-%{VERSION}-%{RELEASE} %{SIGPGP:pgpsig} %{SIGGPG:pgpsig}\\n' #{rpm} 2>/dev/null}
+    rpm_info = %x{rpm -qp --qf '%{NAME}-%{VERSION}-%{RELEASE}#{fieldsep}%{SIGPGP:pgpsig} %{SIGGPG:pgpsig}#{fieldsep}%{BUILDHOST}\\n' #{rpm} 2>/dev/null}
 
-    rpm_name = rpm_info.split(/\s+/).first
+    rpm_name, rpm_sig, rpm_buildhost = rpm_info.split('|')
 
-    if rpm_info =~ /Key ID (\S+)/
+    key_id = nil
+    if rpm_sig =~ /Key ID (\S+)/
       key_id = $1.upcase
+    end
 
+    if key_id
       if valid_sigs[key_id]
         rpm_metadata[:valid][valid_sigs[key_id]] ||= {
           :key  => key_id,
           :rpms => []
         }
 
-        rpm_metadata[:valid][valid_sigs[key_id]][:rpms] << rpm_name
+        # We signed it
+        uid_match = Regexp.new('.+@simp-project.org')
+
+        # Vendor packages
+        uid_vendor = Regexp.new('.+@(fedora|centos)')
+
+        if uid_match.match(valid_sigs[key_id])
+          rpm_metadata[:rpm_type][:simp] << rpm_name
+        elsif uid_vendor.match(valid_sigs[key_id])
+          rpm_metadata[:rpm_type][:other] << rpm_name
+        else
+          rpm_metadata[:rpm_type][:simp_deps] << rpm_name
+        end
       else
-        rpm_metadata[:invalid][rpm_name] = "Unknown Key => #{key_id}"
+        rpm_metadata[:invalid][rpm_name] ||= []
+        rpm_metadata[:invalid][rpm_name] << "Unknown Key => #{key_id}"
       end
     else
-      rpm_metadata[:invalid][rpm_name] = 'Not Signed'
+      rpm_metadata[:invalid][rpm_name] ||= []
+      rpm_metadata[:invalid][rpm_name] << 'Not Signed'
+    end
+
+    unless valid_build_host?(rpm_buildhost)
+      rpm_metadata[:invalid][rpm_name] ||= []
+      rpm_metadata[:invalid][rpm_name] << "Invalid Build Host: #{rpm_buildhost}"
+    end
+
+    unless rpm_metadata[:invalid][rpm_name]
+      rpm_metadata[:valid][valid_sigs[key_id]][:rpms] << rpm_name
     end
   end
 
@@ -162,6 +231,14 @@ options = parse_options
 
 valid_sigs = extract_gpgkeys(options.target_dir)
 rpm_metadata = process_rpms(options.target_dir, valid_sigs)
+
+if options.quiet
+  if rpm_metadata[:invalid].empty?
+    exit 0
+  else
+    exit 1
+  end
+end
 
 if options.report_type == 'valid'
   rpm_metadata[:valid].each do |k,v|
@@ -177,7 +254,8 @@ if options.report_type == 'invalid'
     puts 'Invalid RPMs:'
 
     rpm_metadata[:invalid].each do |k,v|
-      puts "* #{k}: #{v}"
+      puts "* #{k}:"
+      puts %(  * #{Array(v).join("\n  * ")})
     end
 
     exit 2
@@ -208,33 +286,14 @@ if options.report_type == 'unused_keys'
   end
 end
 
-if options.report_type == 'simp' || options.report_type == 'simp_deps'
+if options.report_type == 'simp_pkgs'
+  puts rpm_metadata[:rpm_type][:simp].join("\n")
+end
 
-  # We signed it
-  uid_match = Regexp.new('.+@simp-project.org')
+if options.report_type == 'simp_dep_pkgs'
+  puts rpm_metadata[:rpm_type][:simp_deps].join("\n")
+end
 
-  # Exclude main vendor packages (they should go in the archived versions but
-  # aren't part of the deps repo
-  uid_exclude = Regexp.new('.+@(fedora|centos)')
-
-  rpms = {
-    :simp => [],
-    :simp_deps => []
-  }
-
-  rpm_metadata[:valid].each do |k,v|
-    if uid_match.match(k)
-      rpms[:simp] += v[:rpms]
-    elsif !uid_exclude.match(k)
-      rpms[:simp_deps] += v[:rpms]
-    end
-  end
-
-  if options.report_type == 'simp'
-    puts rpms[:simp].join("\n")
-  end
-
-  if options.report_type == 'simp_deps'
-    puts rpms[:simp_deps].join("\n")
-  end
+if options.report_type == 'other_pkgs'
+  puts rpm_metadata[:rpm_type][:other].join("\n")
 end
