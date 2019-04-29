@@ -1,0 +1,7 @@
+---
+stages:
+  - 'sanity'
+  - 'validation'
+  - 'acceptance'
+  - 'compliance'
+  - 'deployment'
