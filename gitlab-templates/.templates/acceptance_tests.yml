@@ -1,9 +1,33 @@
 # Acceptance tests
 # ==============================================================================
 ---
-pup5.5.10-oel-fips:
+pup5.5.10:
   extends: .pup_5_5_10
   extends: .acceptance_base
-  extends: .only_with_SIMP_FULL_MATRIX
   script:
-    - 'BEAKER_fips=yes bundle exec rake beaker:suites[default,oel]'
+    - 'bundle exec rake beaker:suites'
+
+pup5.5.10-fips:
+  extends: .pup_5_5_10
+  extends: .acceptance_base
+  script:
+    - 'BEAKER_fips=yes bundle exec rake beaker:suites'
+
+pup5.5.10-oel:
+  extends: .pup_5_5_10
+  extends: .acceptance_base
+  script:
+    - 'bundle exec rake beaker:suites[default,oel]'
+
+
+pup6:
+  extends: .pup_6
+  extends: .acceptance_base
+  script:
+    - 'bundle exec rake beaker:suites'
+
+pup6-fips:
+  extends: .pup_6
+  extends: .acceptance_base
+  script:
+    - 'BEAKER_fips=yes bundle exec rake beaker:suites'
