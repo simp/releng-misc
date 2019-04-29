@@ -2,13 +2,13 @@
 #-----------------------------------------------------------------------
 ---
 pup5-unit:
-  extends .pup_5
-  extends .unit_tests
+  extends: .pup_5
+  extends: .unit_tests
 
 pup5.5.7-unit:
-  extends .pup_5_5_7
-  extends .unit_tests
+  extends: .pup_5_5_7
+  extends: .unit_tests
 
 pup6-unit:
-  extends .pup_6
-  extends .unit_tests
+  extends: .pup_6
+  extends: .unit_tests
