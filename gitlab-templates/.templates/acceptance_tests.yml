@@ -1,14 +1,11 @@
 # Acceptance tests
 # ==============================================================================
 ---
-pup6:
-  extends: .pup_6
-  extends: .acceptance_base
-  script:
-    - 'bundle exec rake beaker:suites'
 
-pup6-fips:
-  extends: .pup_6
+pup5.5.7-oel:
+  extends: .pup_5_5_7
   extends: .acceptance_base
   script:
-    - 'BEAKER_fips=yes bundle exec rake beaker:suites'
+    - 'bundle exec rake beaker:suites[default,oel]'
+
+
