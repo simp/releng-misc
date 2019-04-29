@@ -19,10 +19,18 @@ pup5.5.7-oel:
   script:
     - 'bundle exec rake beaker:suites[default,oel]'
 
+#pup5.5.7-oel-fips:
+#  extends: .pup_5_5_7
+#  extends: .acceptance_base
+#  extends: .only_with_SIMP_FULL_MATRIX
+#  script:
+#    - 'BEAKER_fips=yes bundle exec rake beaker:suites[default,oel]'
+
 pup5.5.7-oel-fips:
-  extends: .pup_5_5_7
-  extends: .acceptance_base
-  extends: .only_with_SIMP_FULL_MATRIX
+  extends: 
+    - .pup_5_5_7
+    - .acceptance_base
+    - .only_with_SIMP_FULL_MATRIX
   script:
     - 'BEAKER_fips=yes bundle exec rake beaker:suites[default,oel]'
 
