@@ -183,4 +183,5 @@ pup6-fips:
   <<: *pup_6
   <<: *acceptance_base
   script:
-- 'BEAKER_fips=yes bundle exec rake beaker:suites'
+    - 'BEAKER_fips=yes bundle exec rake beaker:suites'
+
