@@ -1,0 +1,28 @@
+# Testing Environments
+#-----------------------------------------------------------------------
+---
+.lint_tests:
+  stage: 'validation'
+  tags: ['docker']
+  extends: .setup_bundler_env
+  script:
+    - 'bundle exec rake syntax'
+    - 'bundle exec rake lint'
+    - 'bundle exec rake metadata_lint'
+
+.unit_tests:
+  stage: 'validation'
+  tags: ['docker']
+  extends: .setup_bundler_env
+  script:
+    - 'bundle exec rake spec'
+
+.acceptance_base:
+  stage: 'acceptance'
+  tags: ['beaker']
+  extends: .setup_bundler_env
+
+.compliance_base:
+  stage: 'compliance'
+  tags: ['beaker']
+  extends: .setup_bundler_env

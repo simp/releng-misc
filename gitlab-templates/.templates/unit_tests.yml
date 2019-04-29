@@ -1,0 +1,17 @@
+# Unit Tests
+#-----------------------------------------------------------------------
+---
+pup5-unit:
+  extends:
+    - .pup_5
+    - .unit_tests
+
+pup5.5.7-unit:
+  extends:
+    - .pup_5_5_7
+    - .unit_tests
+
+pup6-unit:
+  extends:
+    - .pup_6
+    - .unit_tests

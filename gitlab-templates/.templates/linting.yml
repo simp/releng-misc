@@ -1,0 +1,12 @@
+# Linting
+#-----------------------------------------------------------------------
+---
+pup5-lint:
+  extends:
+    - .pup_5
+    - .lint_tests
+
+pup6-lint:
+  extends:
+    - .pup_6
+    - .lint_tests
