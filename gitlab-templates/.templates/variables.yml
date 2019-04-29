@@ -11,13 +11,14 @@ variables:
   BUNDLE_PATH:       .vendor/bundle
   BUNDLER_VERSION:   '1.17.1'
 
-  # These are defaults for our current version, future versions will have to
-  # override (ex: we are on pup5, pup6 is the future ver, so you would define
-  # an override in that entry:
-  #   .pup_6: 
-  #     extends: .pup6_ruby_version
-  #     variables: 
-  #       PUPPET_VERSION: '~> 6.0' 
-  #       BEAKER_PUPPET_COLLECTION: 'puppet6' 
-  # )
-  BEAKER_PUPPET_COLLECTION: 'puppet5'
+.pup5_ruby_version:
+  image: 'ruby:2.4.5'
+  variables:
+    BEAKER_PUPPET_COLLECTION: 'puppet5'
+    MATRIX_RUBY_VERSION: '2.4.5'
+
+.pup6_ruby_version:
+  image: 'ruby:2.5.1'
+  variables:
+    BEAKER_PUPPET_COLLECTION: 'puppet6'
+    MATRIX_RUBY_VERSION: '2.5.1'
