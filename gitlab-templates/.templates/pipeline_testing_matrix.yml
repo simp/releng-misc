@@ -2,9 +2,8 @@
 #=======================================================================
 ---
 sanity_checks:
-  extends: 
-    - .pup_5
-    - .setup_bundler_env
+  extends: .pup_5
+  extends: .setup_bundler_env
   stage: 'sanity'
   tags: ['docker']
   script:
