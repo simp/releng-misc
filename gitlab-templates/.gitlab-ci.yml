@@ -1,12 +1,12 @@
 ---
 include:
-  - .templates/acceptance_tests.yml
-  - .templates/linting.yml
-  - .templates/only_with_simp_full_matrix.yml
-  - .templates/pipeline_testing_matrix.yml
-  - .templates/pup_versions.yml
-  - .templates/setup_bundler_env.yml
-  - .templates/stages.yml
-  - .templates/test_environments.yml
-  - .templates/unit_tests.yml
-  - .templates/variables.yml
+  - local: '.templates/acceptance_tests.yml'
+  - local: '.templates/linting.yml'
+  - local: '.templates/only_with_simp_full_matrix.yml'
+  - local: '.templates/pipeline_testing_matrix.yml'
+  - local: '.templates/pup_versions.yml'
+  - local: '.templates/setup_bundler_env.yml'
+  - local: '.templates/stages.yml'
+  - local: '.templates/test_environments.yml'
+  - local: '.templates/unit_tests.yml'
+  - local: '.templates/variables.yml'
