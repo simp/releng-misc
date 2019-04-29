@@ -5,8 +5,8 @@ pup5-unit:
   extends: .pup_5
   extends: .unit_tests
 
-pup5.5.7-unit:
-  extends: .pup_5_5_7
+pup5.5.10-unit:
+  extends: .pup_5_5_10
   extends: .unit_tests
 
 pup6-unit:
