@@ -38,7 +38,7 @@ variables:
       - '.vendor'
   before_script:
     - 'ruby -e "puts %(\n\n), %q(=)*80, %(\nSIMP-relevant Environment Variables:\n\n#{e=ENV.keys.grep(/^PUPPET|^SIMP|^BEAKER|MATRIX/); pad=e.map{|x| x.size}.max+1; e.map{|v| %(    * #{%(#{v}:).ljust(pad)} #{39.chr + ENV[v] + 39.chr}\n)}.join}\n),  %q(=)*80, %(\n\n)"'
-    - 'declare GEM_BUNDLER_VER=(-v "~> ${BUNDLER_VERSION:-1.17.1}")'
+    - 'declare GEM_BUNDLER_VER=(-v "~> ${BUNDLER_VERSION}")'
     - 'declare GEM_INSTALL_CMD=(gem install --no-document)'
     - 'declare BUNDLER_INSTALL_CMD=(bundle install --no-binstubs --jobs $(nproc) "${FLAGS[@]}")'
     - 'mkdir -p ${GEM_HOME} ${BUNDLER_BIN}'
@@ -62,23 +62,34 @@ variables:
     PUPPET_VERSION: '~> 5.0'
 
 
-# Pipeline / testing matrix
-#=======================================================================
-
-sanity_checks:
-  extends: '.pup_5'
-  <<: *setup_bundler_env
-  stage: 'sanity'
+.lint_tests:
+  stage: 'validation'
   tags: ['docker']
+  extends: '.setup_bundler_env'
   script:
-    - 'if `hash apt-get`; then apt-get update; fi'
-    - 'if `hash apt-get`; then apt-get install -y rpm; fi'
-    - 'bundle exec rake check:dot_underscore'
-    - 'bundle exec rake check:test_file'
-    - 'bundle exec rake pkg:check_version'
-    - 'bundle exec rake pkg:compare_latest_tag'
-    - 'bundle exec rake pkg:create_tag_changelog'
-    - 'bundle exec puppet module build'
+    - 'bundle exec rake syntax'
+    - 'bundle exec rake lint'
+    - 'bundle exec rake metadata_lint'
 
+.unit_tests:
+  stage: 'validation'
+  tags: ['docker']
+  extends: '.setup_bundler_env'
+  script:
+    - 'bundle exec rake spec'
+
+.acceptance_base:
+  stage: 'acceptance'
+  tags: ['beaker']
+  extends: '.setup_bundler_env'
+
+.compliance_base:
+  stage: 'compliance'
+  tags: ['beaker']
+  extends: '.setup_bundler_env'
+
+pup5-lint:
+  extends: '.pup_5'
+  extends: '.lint_tests'
 
 
