@@ -22,26 +22,20 @@ include:
 # Puppet Versions
 #-----------------------------------------------------------------------
 
-.pup_5: &pup_5
-  image: 'ruby:2.4.5'
+.pup_5:
+  extends: .pup5_ruby_version
   variables:
     PUPPET_VERSION: '~> 5.0'
-    BEAKER_PUPPET_COLLECTION: 'puppet5'
-    MATRIX_RUBY_VERSION: '2.4.5'
 
-.pup_5_5_10: &pup_5_5_10
-  image: 'ruby:2.4.5'
+.pup_5_5_10:
+  extends: .pup5_ruby_version
   variables:
     PUPPET_VERSION: '5.5.10'
-    BEAKER_PUPPET_COLLECTION: 'puppet5'
-    MATRIX_RUBY_VERSION: '2.4.5'
 
-.pup_6: &pup_6
-  image: 'ruby:2.5.1'
+.pup_6:
+  extends: .pup6_ruby_version
   variables:
     PUPPET_VERSION: '~> 6.0'
-    BEAKER_PUPPET_COLLECTION: 'puppet6'
-    MATRIX_RUBY_VERSION: '2.5.1'
 
 
 
@@ -49,7 +43,7 @@ include:
 #=======================================================================
 
 sanity_checks:
-  <<: *pup_5
+  extends: .pup_5
   extends: .setup_bundler_env
   stage: 'sanity'
   tags: ['docker']
@@ -67,63 +61,63 @@ sanity_checks:
 #-----------------------------------------------------------------------
 
 pup5-lint:
-  <<: *pup_5
+  extends: .pup_5
   extends: .lint_tests
 
 pup6-lint:
-  <<: *pup_6
+  extends: .pup_6
   extends: .lint_tests
 
 # Unit Tests
 #-----------------------------------------------------------------------
 
 pup5-unit:
-  <<: *pup_5
+  extends: .pup_5
   extends: .unit_tests
 
 pup5.5.10-unit:
-  <<: *pup_5_5_10
+  extends: .pup_5_5_10
   extends: .unit_tests
 
 pup6-unit:
-  <<: *pup_6
+  extends: .pup_6
   extends: .unit_tests
 
 # Acceptance tests
 # ==============================================================================
 pup5.5.10:
-  <<: *pup_5_5_10
+  extends: .pup_5_5_10
   extends: .acceptance_base
   script:
     - 'bundle exec rake beaker:suites'
 
 pup5.5.10-fips:
-  <<: *pup_5_5_10
+  extends: .pup_5_5_10
   extends: .acceptance_base
   script:
     - 'BEAKER_fips=yes bundle exec rake beaker:suites'
 
 pup5.5.10-oel-combined-x64:
-  <<: *pup_5_5_10
+  extends: .pup_5_5_10
   extends: .acceptance_base
   script:
     - 'bundle exec rake beaker:suites[default,oel-combined-x64]'
 
 #pup5.5.10-oel-combined-x64-fips:
-#  <<: *pup_5_5_10
+#  extends: .pup_5_5_10
 #  extends: .acceptance_base
 #  extends: .only_with_SIMP_FULL_MATRIX
 #  script:
 #    - 'BEAKER_fips=yes bundle exec rake beaker:suites[default,oel-combined-x64]'
 
 pup6:
-  <<: *pup_6
+  extends: .pup_6
   extends: .acceptance_base
   script:
     - 'bundle exec rake beaker:suites'
 
 pup6-fips:
-  <<: *pup_6
+  extends: .pup_6
   extends: .acceptance_base
   script:
     - 'BEAKER_fips=yes bundle exec rake beaker:suites'
