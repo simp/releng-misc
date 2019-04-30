@@ -11,25 +11,9 @@
 #
 # *** = Modules created for SIMP 6.3+ are not required to support Puppet < 5.5
 ---
-stages:
-  - 'sanity'
-  - 'validation'
-  - 'acceptance'
-  - 'compliance'
-  - 'deployment'
-
-variables:
-  PUPPET_VERSION:    'UNDEFINED' # <- Matrixed jobs MUST override this (or fail)
-  BUNDLER_VERSION:   '1.17.1'
-
-  # Force dependencies into a path the gitlab-runner user can write to.
-  # (This avoids some failures on Runners with misconfigured ruby environments.)
-  GEM_HOME:          .vendor/gem_install
-  BUNDLE_CACHE_PATH: .vendor/bundle
-  BUNDLE_PATH:       .vendor/bundle
-  BUNDLE_BIN:        .vendor/gem_install/bin
-  BUNDLE_NO_PRUNE:   'true'
-
+include:
+  - local: '/gitlab-templates/.templates/stages.yml'
+  - local: '/gitlab-templates/.templates/variables.yml'
 
 # bundler dependencies and caching
 #
