@@ -191,12 +191,12 @@ pup5.5.10-oel-combined-x64:
   script:
     - 'bundle exec rake beaker:suites[default,oel-combined-x64]'
 
-pup5.5.10-oel-combined-x64-fips:
-  extends: .pup_5_5_10
-  extends: .acceptance_base
-  extends: .only_with_SIMP_FULL_MATRIX
-  script:
-    - 'BEAKER_fips=yes bundle exec rake beaker:suites[default,oel-combined-x64]'
+#pup5.5.10-oel-combined-x64-fips:
+#  extends: .pup_5_5_10
+#  extends: .acceptance_base
+#  extends: .only_with_SIMP_FULL_MATRIX
+#  script:
+#    - 'BEAKER_fips=yes bundle exec rake beaker:suites[default,oel-combined-x64]'
 
 pup6:
   extends: .pup_6
