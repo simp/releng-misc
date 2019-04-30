@@ -8,5 +8,5 @@ include:
   - local: '/gitlab-templates/.templates/pup_versions.yml'
   - local: '/gitlab-templates/.templates/linting.yml'
   - local: '/gitlab-templates/.templates/test_environments.yml'
-#  - local: '/gitlab-templates/.templates/unit_tests.yml'
-#  - local: '/gitlab-templates/.templates/acceptance_tests.yml'
+  - local: '/gitlab-templates/.templates/unit_tests.yml'
+  - local: '/gitlab-templates/.templates/acceptance_tests.yml'

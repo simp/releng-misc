@@ -1,5 +1,7 @@
 # Puppet Versions
 #-----------------------------------------------------------------------
+include: variables.yml
+
 .pup_5:
   extends: .pup5_ruby_version 
   variables:
@@ -14,4 +16,3 @@
   extends: .pup6_ruby_version 
   variables:
     PUPPET_VERSION: '~> 6.0'
-
