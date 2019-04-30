@@ -47,7 +47,7 @@ pup5-unit:
 
 pup5.5.10-unit:
   extends: '.pup_5_5_10'
-  <<: *unit_tests'
+  <<: *unit_tests
 
 pup6-unit:
   extends: '.pup_6'
