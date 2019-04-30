@@ -56,16 +56,40 @@ variables:
     BEAKER_PUPPET_COLLECTION: 'puppet5'
     MATRIX_RUBY_VERSION: '2.4.5'
 
+.pup_5_5_10:
+  image: 'ruby:2.4.5'
+  variables:
+    PUPPET_VERSION: '5.5.10'
+    BEAKER_PUPPET_COLLECTION: 'puppet5'
+    MATRIX_RUBY_VERSION: '2.4.5'
+
+.pup_6:
+  image: 'ruby:2.5.1'
+  variables:
+    PUPPET_VERSION: '~> 6.0'
+    BEAKER_PUPPET_COLLECTION: 'puppet6'
+    MATRIX_RUBY_VERSION: '2.5.1'
+
+
 # Pipeline / testing matrix
 #=======================================================================
 
-.sanity_checks_p1:
-  extends: '.setup_bundler_env'
-.sanity_checks_p2:
-  extends: '.pup_5'
 sanity_checks:
-  extends: '.sanity_checks_p1'
-  extends: '.sanity_checks_p2'
+  cache:
+    untracked: true
+    key: "${CI_PROJECT_NAMESPACE}_ruby-${MATRIX_RUBY_VERSION}_bundler"
+    paths:
+      - '.vendor'
+  before_script:
+    - 'ruby -e "puts %(\n\n), %q(=)*80, %(\nSIMP-relevant Environment Variables:\n\n#{e=ENV.keys.grep(/^PUPPET|^SIMP|^BEAKER|MATRIX/); pad=e.map{|x| x.size}.max+1; e.map{|v| %(    * #{%(#{v}:).ljust(pad)} #{39.chr + ENV[v] + 39.chr}\n)}.join}\n),  %q(=)*80, %(\n\n)"'
+    - 'declare GEM_BUNDLER_VER=(-v "~> ${BUNDLER_VERSION:-1.17.1}")'
+    - 'declare GEM_INSTALL_CMD=(gem install --no-document)'
+    - 'declare BUNDLER_INSTALL_CMD=(bundle install --no-binstubs --jobs $(nproc) "${FLAGS[@]}")'
+    - 'mkdir -p ${GEM_HOME} ${BUNDLER_BIN}'
+    - 'gem list -ie "${GEM_BUNDLER_VER[@]}" --silent bundler || "${GEM_INSTALL_CMD[@]}" --local "${GEM_BUNDLER_VER[@]}" bundler || "${GEM_INSTALL_CMD[@]}" "${GEM_BUNDLER_VER[@]}" bundler'
+    - 'rm -rf pkg/ || :'
+    - 'bundle check || rm -f Gemfile.lock && ("${BUNDLER_INSTALL_CMD[@]}" --local || "${BUNDLER_INSTALL_CMD[@]}" || bundle pristine ||  "${BUNDLER_INSTALL_CMD[@]}") || { echo "PIPELINE: Bundler could not install everything (see log output above)" && exit 99 ; }'
+  extends: '.pup_5'
   stage: 'sanity'
   tags: ['docker']
   script:
