@@ -12,7 +12,7 @@
 # *** = Modules created for SIMP 6.3+ are not required to support Puppet < 5.5
 ---
 include:
-  - local: '/gitlab-templates/.templates/bundle_and_sanity.yml'
+#  - local: '/gitlab-templates/.templates/bundle_and_sanity.yml'
   - local: '/gitlab-templates/.templates/pup_versions.yml'
   - local: '/gitlab-templates/.templates/setup_bundler_env.yml'
   - local: '/gitlab-templates/.templates/stages.yml'
