@@ -49,7 +49,7 @@ include:
 .lint_tests: &lint_tests
   stage: 'validation'
   tags: ['docker']
-  <<: *setup_bundler_env
+  extends: setup_bundler_env
   script:
     - 'bundle exec rake syntax'
     - 'bundle exec rake lint'
@@ -58,26 +58,26 @@ include:
 .unit_tests: &unit_tests
   stage: 'validation'
   tags: ['docker']
-  <<: *setup_bundler_env
+  extends: setup_bundler_env
   script:
     - 'bundle exec rake spec'
 
 .acceptance_base: &acceptance_base
   stage: 'acceptance'
   tags: ['beaker']
-  <<: *setup_bundler_env
+  extends: setup_bundler_env
 
 .compliance_base: &compliance_base
   stage: 'compliance'
   tags: ['beaker']
-  <<: *setup_bundler_env
+  extends: setup_bundler_env
 
 # Pipeline / testing matrix
 #=======================================================================
 
 sanity_checks:
   <<: *pup_5
-  <<: *setup_bundler_env
+  extends: setup_bundler_env
   stage: 'sanity'
   tags: ['docker']
   script:
@@ -139,7 +139,7 @@ pup5.5.10-oel-combined-x64:
 pup5.5.10-oel-combined-x64-fips:
   <<: *pup_5_5_10
   <<: *acceptance_base
-  <<: *only_with_SIMP_FULL_MATRIX
+  extends: only_with_SIMP_FULL_MATRIX
   script:
     - 'BEAKER_fips=yes bundle exec rake beaker:suites[default,oel-combined-x64]'
 
