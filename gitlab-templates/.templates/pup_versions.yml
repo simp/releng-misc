@@ -2,7 +2,6 @@
 #-----------------------------------------------------------------------
 .pup_5:
   extends: .pup5_ruby_version 
-  extends: .variables 
   variables:
     PUPPET_VERSION: '~> 5.0'
 

@@ -18,6 +18,13 @@ variables:
   BUNDLE_BIN:        .vendor/gem_install/bin
   BUNDLE_NO_PRUNE:   'true'
 
+.pup5_ruby_version:
+  image: 'ruby:2.4.5'
+  variables:
+    PUPPET_VERSION:           'UNDEFINED' # <- Matrixed jobs MUST override this (or fail)
+    BEAKER_PUPPET_COLLECTION: 'puppet5'
+    MATRIX_RUBY_VERSION:      '2.4.5'
+
 # bundler dependencies and caching
 #
 # - Cache bundler gems between pipelines foreach Ruby version
@@ -50,25 +57,9 @@ variables:
 #-----------------------------------------------------------------------
 
 .pup_5:
-  image: 'ruby:2.4.5'
+  extends: .pup5_ruby_version 
   variables:
     PUPPET_VERSION: '~> 5.0'
-    BEAKER_PUPPET_COLLECTION: 'puppet5'
-    MATRIX_RUBY_VERSION: '2.4.5'
-
-.pup_5_5_10:
-  image: 'ruby:2.4.5'
-  variables:
-    PUPPET_VERSION: '5.5.10'
-    BEAKER_PUPPET_COLLECTION: 'puppet5'
-    MATRIX_RUBY_VERSION: '2.4.5'
-
-.pup_6:
-  image: 'ruby:2.5.1'
-  variables:
-    PUPPET_VERSION: '~> 6.0'
-    BEAKER_PUPPET_COLLECTION: 'puppet6'
-    MATRIX_RUBY_VERSION: '2.5.1'
 
 
 # Pipeline / testing matrix
@@ -88,5 +79,6 @@ sanity_checks:
     - 'bundle exec rake pkg:compare_latest_tag'
     - 'bundle exec rake pkg:create_tag_changelog'
     - 'bundle exec puppet module build'
+
 
 
