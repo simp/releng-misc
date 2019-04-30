@@ -1,15 +1,3 @@
-# The testing matrix considers ruby/puppet versions supported by SIMP and PE:
-#
-# https://puppet.com/docs/pe/2019.0/component_versions_in_recent_pe_releases.html
-# https://puppet.com/misc/puppet-enterprise-lifecycle
-# https://puppet.com/docs/pe/2018.1/overview/getting_support_for_pe.html
-# ------------------------------------------------------------------------------
-# Release       Puppet   Ruby   EOL
-# SIMP 6.3      5.5.10   2.4.5  TBD***
-# PE 2018.1.7   5.5.10   2.4.5  2020-05 (LTS)***
-# PE 2019.0     6.0      2.5.1  2019-08-31^^^
-#
-# *** = Modules created for SIMP 6.3+ are not required to support Puppet < 5.5
 ---
 stages:
   - 'sanity'
@@ -29,21 +17,6 @@ variables:
   BUNDLE_PATH:       .vendor/bundle
   BUNDLE_BIN:        .vendor/gem_install/bin
   BUNDLE_NO_PRUNE:   'true'
-
-.pup5_ruby_version:
-  image: 'ruby:2.4.5'
-  variables:
-    PUPPET_VERSION:           'UNDEFINED' # <- Matrixed jobs MUST override this (or fail)
-    BEAKER_PUPPET_COLLECTION: 'puppet5'
-    MATRIX_RUBY_VERSION:      '2.4.5'
-
-.pup6_ruby_version:
-  image: 'ruby:2.5.1'
-  variables:
-    PUPPET_VERSION:           'UNDEFINED' # <- Matrixed jobs MUST override this (or fail)
-    BEAKER_PUPPET_COLLECTION: 'puppet6'
-    MATRIX_RUBY_VERSION:      '2.5.1'
-
 
 # bundler dependencies and caching
 #
@@ -98,41 +71,12 @@ variables:
     MATRIX_RUBY_VERSION: '2.5.1'
 
 
-# Testing Environments
-#-----------------------------------------------------------------------
-
-.lint_tests:
-  stage: 'validation'
-  tags: ['docker']
-  extends: '.setup_bundler_env'
-  script:
-    - 'bundle exec rake syntax'
-    - 'bundle exec rake lint'
-    - 'bundle exec rake metadata_lint'
-
-.unit_tests:
-  stage: 'validation'
-  tags: ['docker']
-  extends: '.setup_bundler_env'
-  script:
-    - 'bundle exec rake spec'
-
-.acceptance_base:
-  stage: 'acceptance'
-  tags: ['beaker']
-  extends: '.setup_bundler_env'
-
-.compliance_base:
-  stage: 'compliance'
-  tags: ['beaker']
-  extends: '.setup_bundler_env'
-
 # Pipeline / testing matrix
 #=======================================================================
 
 sanity_checks:
-  extends: '.pup_5'
   extends: '.setup_bundler_env'
+  extends: '.pup_5'
   stage: 'sanity'
   tags: ['docker']
   script:
@@ -145,67 +89,4 @@ sanity_checks:
     - 'bundle exec rake pkg:create_tag_changelog'
     - 'bundle exec puppet module build'
 
-# Linting
-#-----------------------------------------------------------------------
 
-pup5-lint:
-  extends: '.pup_5'
-  extends: '.lint_tests'
-
-pup6-lint:
-  extends: '.pup_6'
-  extends: '.lint_tests'
-
-# Unit Tests
-#-----------------------------------------------------------------------
-
-pup5-unit:
-  extends: '.pup_5'
-  extends: '.unit_tests'
-
-pup5.5.10-unit:
-  extends: '.pup_5_5_10'
-  extends: '.unit_tests'
-
-pup6-unit:
-  extends: '.pup_6'
-  extends: '.unit_tests'
-
-# Acceptance tests
-# ==============================================================================
-pup5.5.10:
-  extends: '.pup_5_5_10'
-  extends: '.acceptance_base'
-  script:
-    - 'bundle exec rake beaker:suites'
-
-pup5.5.10-fips:
-  extends: '.pup_5_5_10'
-  extends: '.acceptance_base'
-  script:
-    - 'BEAKER_fips=yes bundle exec rake beaker:suites'
-
-pup5.5.10-oel-combined-x64:
-  extends: '.pup_5_5_10'
-  extends: '.acceptance_base'
-  script:
-    - 'bundle exec rake beaker:suites[default,oel-combined-x64]'
-
-#pup5.5.10-oel-combined-x64-fips:
-#  extends: '.pup_5_5_10'
-#  extends: '.acceptance_base'
-#  extends: '.only_with_SIMP_FULL_MATRIX'
-#  script:
-#    - 'BEAKER_fips=yes bundle exec rake beaker:suites[default,oel-combined-x64]'
-
-pup6:
-  extends: '.pup_6'
-  extends: '.acceptance_base'
-  script:
-    - 'bundle exec rake beaker:suites'
-
-pup6-fips:
-  extends: '.pup_6'
-  extends: '.acceptance_base'
-  script:
-    - 'BEAKER_fips=yes bundle exec rake beaker:suites'
