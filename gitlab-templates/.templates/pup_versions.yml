@@ -1,7 +1,7 @@
 # Puppet Versions
 #-----------------------------------------------------------------------
 include: 
-  - local: '/gitlab-templates/variables.yml'
+  - local: '/gitlab-templates/.templates/variables.yml'
 
 .pup_5:
   extends: .pup5_ruby_version 
