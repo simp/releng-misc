@@ -56,27 +56,16 @@ variables:
     BEAKER_PUPPET_COLLECTION: 'puppet5'
     MATRIX_RUBY_VERSION: '2.4.5'
 
-.pup_5_5_10:
-  image: 'ruby:2.4.5'
-  variables:
-    PUPPET_VERSION: '5.5.10'
-    BEAKER_PUPPET_COLLECTION: 'puppet5'
-    MATRIX_RUBY_VERSION: '2.4.5'
-
-.pup_6:
-  image: 'ruby:2.5.1'
-  variables:
-    PUPPET_VERSION: '~> 6.0'
-    BEAKER_PUPPET_COLLECTION: 'puppet6'
-    MATRIX_RUBY_VERSION: '2.5.1'
-
-
 # Pipeline / testing matrix
 #=======================================================================
 
-sanity_checks:
+.sanity_checks_p1:
   extends: '.setup_bundler_env'
+.sanity_checks_p2:
   extends: '.pup_5'
+sanity_checks:
+  extends: '.sanity_checks_p1'
+  extends: '.sanity_checks_p2'
   stage: 'sanity'
   tags: ['docker']
   script:
