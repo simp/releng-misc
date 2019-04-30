@@ -1,19 +1,19 @@
 # Puppet Versions
 #-----------------------------------------------------------------------
-include: 
-  - local: '/gitlab-templates/.templates/variables.yml'
-
 .pup_5:
   extends: .pup5_ruby_version 
+  extends: variables
   variables:
     PUPPET_VERSION: '~> 5.0'
 
 .pup_5_5_10:
   extends: .pup5_ruby_version 
+  extends: variables
   variables:
     PUPPET_VERSION: '5.5.10'
 
 .pup_6:
   extends: .pup6_ruby_version 
+  extends: variables
   variables:
     PUPPET_VERSION: '~> 6.0'
