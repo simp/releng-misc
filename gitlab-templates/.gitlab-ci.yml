@@ -64,9 +64,6 @@ pup5-lint:
   extends: .pup_5
   extends: .lint_tests
 
-pup6-lint:
-  extends: .pup_6
-  extends: .lint_tests
 
 # Unit Tests
 #-----------------------------------------------------------------------
@@ -79,9 +76,6 @@ pup5.5.10-unit:
   extends: .pup_5_5_10
   extends: .unit_tests
 
-pup6-unit:
-  extends: .pup_6
-  extends: .unit_tests
 
 # Acceptance tests
 # ==============================================================================
@@ -91,33 +85,4 @@ pup5.5.10:
   script:
     - 'bundle exec rake beaker:suites'
 
-pup5.5.10-fips:
-  extends: .pup_5_5_10
-  extends: .acceptance_base
-  script:
-    - 'BEAKER_fips=yes bundle exec rake beaker:suites'
 
-pup5.5.10-oel-combined-x64:
-  extends: .pup_5_5_10
-  extends: .acceptance_base
-  script:
-    - 'bundle exec rake beaker:suites[default,oel-combined-x64]'
-
-#pup5.5.10-oel-combined-x64-fips:
-#  extends: .pup_5_5_10
-#  extends: .acceptance_base
-#  extends: .only_with_SIMP_FULL_MATRIX
-#  script:
-#    - 'BEAKER_fips=yes bundle exec rake beaker:suites[default,oel-combined-x64]'
-
-pup6:
-  extends: .pup_6
-  extends: .acceptance_base
-  script:
-    - 'bundle exec rake beaker:suites'
-
-pup6-fips:
-  extends: .pup_6
-  extends: .acceptance_base
-  script:
-    - 'BEAKER_fips=yes bundle exec rake beaker:suites'
