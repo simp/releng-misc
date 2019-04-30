@@ -1,6 +1,7 @@
 # Puppet Versions
 #-----------------------------------------------------------------------
-include: variables.yml
+include: 
+  - local: 'variables.yml'
 
 .pup_5:
   extends: .pup5_ruby_version 
