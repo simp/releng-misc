@@ -70,8 +70,8 @@ RUN runuser puppet_build -l -c "cd pl-build-tools-vanagon && find output -name *
 
 ## Build runtime
 RUN runuser puppet_build -l -c "cd puppet-runtime && bundle install"
-RUN runuser puppet_build -l -c "cd puppet-runtime && rvmsudo VANAGON_USE_MIRRORS=n bundle exec build -e local agent-runtime-6.4.x redhatfips-7-x86_64"
-RUN runuser puppet_build -l -c "cd puppet-runtime && rvmsudo VANAGON_USE_MIRRORS=n bundle exec build -e local agent-runtime-master redhatfips-7-x86_64"
+RUN runuser puppet_build -l -c "cd puppet-runtime && rvmsudo VANAGON_USE_MIRRORS=n bundle exec build -e local agent-runtime-6.4.x el-7-x86_64"
+RUN runuser puppet_build -l -c "cd puppet-runtime && rvmsudo VANAGON_USE_MIRRORS=n bundle exec build -e local agent-runtime-master el-7-x86_64"
 RUN runuser puppet_build -l -c "sudo tar -czpvf /root/opt_puppetlabs_backup.tgz /opt/puppetlabs"
 RUN runuser puppet_build -l -c "sudo rm -rf /opt/puppetlabs"
 
@@ -91,7 +91,7 @@ RUN runuser puppet_build -l -c "cd pl-build-tools-vanagon && find output -name *
 RUN runuser puppet_build -l -c "echo /opt/pl-build-tools/lib | sudo tee -a /etc/ld.so.conf && echo /opt/pl-build-tools/lib64 | sudo tee -a /etc/ld.so.conf && sudo ldconfig"
 
 #### TODO: The facter build segfaults in the tests
-RUN runuser puppet_build -l -c "cd puppet-agent && rvmsudo VANAGON_USE_MIRRORS=n bundle exec build -e local puppet-agent redhatfips-7-x86_64"
+RUN runuser puppet_build -l -c "cd puppet-agent && rvmsudo VANAGON_USE_MIRRORS=n bundle exec build -e local puppet-agent el-7-x86_64"
 
 # Drop into a shell for building
 CMD /bin/bash -c "su -l puppet_build"
