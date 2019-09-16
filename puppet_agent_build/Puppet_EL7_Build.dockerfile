@@ -79,15 +79,17 @@ RUN runuser puppet_build -l -c "sudo rm -rf /opt/puppetlabs"
 # Point to the local runtime build
 RUN runuser puppet_build -l -c "cd puppet-agent && sed -i 's|http://.*/artifacts/|file:///home/puppet_build/puppet-runtime/output|' configs/components/puppet-runtime.json"
 
-## Work around leatherman insanity
-RUN runuser puppet_build -l -c "echo /opt/pl-build-tools/lib | sudo tee -a /etc/ld.so.conf && echo /opt/pl-build-tools/lib64 | sudo tee -a /etc/ld.so.conf && sudo ldconfig"
+# Things only needed by the agent build that break the runtime builds
 RUN runuser puppet_build -l -c "cd pl-build-tools-vanagon && rvmsudo VANAGON_USE_MIRRORS=n bundle exec build -e local pl-openssl el-7-x86_64"
 RUN runuser puppet_build -l -c "cd pl-build-tools-vanagon && rvmsudo VANAGON_USE_MIRRORS=n bundle exec build -e local pl-boost el-7-x86_64"
 RUN runuser puppet_build -l -c "cd pl-build-tools-vanagon && find output -name *.rpm | xargs sudo yum -y install"
 RUN runuser puppet_build -l -c "cd pl-build-tools-vanagon && rvmsudo VANAGON_USE_MIRRORS=n bundle exec build -e local pl-curl el-7-x86_64"
+RUN runuser puppet_build -l -c "cd pl-build-tools-vanagon && rvmsudo VANAGON_USE_MIRRORS=n bundle exec build -e local pl-yaml-cpp el-7-x86_64"
 RUN runuser puppet_build -l -c "cd pl-build-tools-vanagon && find output -name *.rpm | xargs sudo yum -y install"
 
-## Build puppet-agent
+# Work around leatherman insanity
+RUN runuser puppet_build -l -c "echo /opt/pl-build-tools/lib | sudo tee -a /etc/ld.so.conf && echo /opt/pl-build-tools/lib64 | sudo tee -a /etc/ld.so.conf && sudo ldconfig"
+
 #### TODO: The facter build segfaults in the tests
 RUN runuser puppet_build -l -c "cd puppet-agent && rvmsudo VANAGON_USE_MIRRORS=n bundle exec build -e local puppet-agent redhatfips-7-x86_64"
 
