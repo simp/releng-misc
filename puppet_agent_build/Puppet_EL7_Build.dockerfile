@@ -82,6 +82,7 @@ RUN runuser puppet_build -l -c "cd puppet-agent && sed -i 's|http://.*/artifacts
 ## Work around leatherman insanity
 RUN runuser puppet_build -l -c "echo /opt/pl-build-tools/lib | sudo tee -a /etc/ld.so.conf && echo /opt/pl-build-tools/lib64 | sudo tee -a /etc/ld.so.conf && sudo ldconfig"
 RUN runuser puppet_build -l -c "cd pl-build-tools-vanagon && rvmsudo VANAGON_USE_MIRRORS=n bundle exec build -e local pl-openssl el-7-x86_64"
+RUN runuser puppet_build -l -c "cd pl-build-tools-vanagon && rvmsudo VANAGON_USE_MIRRORS=n bundle exec build -e local pl-boost el-7-x86_64"
 RUN runuser puppet_build -l -c "cd pl-build-tools-vanagon && find output -name *.rpm | xargs sudo yum -y install"
 RUN runuser puppet_build -l -c "cd pl-build-tools-vanagon && rvmsudo VANAGON_USE_MIRRORS=n bundle exec build -e local pl-curl el-7-x86_64"
 RUN runuser puppet_build -l -c "cd pl-build-tools-vanagon && find output -name *.rpm | xargs sudo yum -y install"
