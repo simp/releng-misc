@@ -56,37 +56,43 @@ RUN /bin/bash -l -c 'cd puppet-agent && bundle install'
 RUN /bin/bash -l -c 'cd puppet-runtime && bundle install'
 
 ## Build vanagon tools
-RUN /bin/bash -l -c 'cd pl-build-tools-vanagon && VANAGON_USE_MIRRORS=n bundle exec build -e local pl-gcc el-7-x86_64'
-RUN /bin/bash -l -c 'cd pl-build-tools-vanagon && VANAGON_USE_MIRRORS=n bundle exec build -e local pl-cmake el-7-x86_64'
-RUN /bin/bash -l -c 'cd pl-build-tools-vanagon && VANAGON_USE_MIRRORS=n bundle exec build -e local pl-ruby el-7-x86_64'
+RUN /bin/bash -l -c 'cd pl-build-tools-vanagon && VANAGON_USE_MIRRORS=n build -e local pl-gcc el-7-x86_64'
+RUN /bin/bash -l -c 'cd pl-build-tools-vanagon && VANAGON_USE_MIRRORS=n build -e local pl-cmake el-7-x86_64'
+RUN /bin/bash -l -c 'cd pl-build-tools-vanagon && VANAGON_USE_MIRRORS=n build -e local pl-gettext el-7-x86_64'
+RUN /bin/bash -l -c 'cd pl-build-tools-vanagon && VANAGON_USE_MIRRORS=n build -e local pl-ruby el-7-x86_64'
 RUN cd pl-build-tools-vanagon && find output -name *.rpm | xargs yum -y install
 
 ## Build runtime
+# rename 6.4.x master *
 RUN /bin/bash -l -c 'cd puppet-runtime && bundle install'
-RUN /bin/bash -l -c 'cd puppet-runtime && VANAGON_USE_MIRRORS=n bundle exec build -e local agent-runtime-6.4.x el-7-x86_64'
-RUN /bin/bash -l -c 'cd puppet-runtime && VANAGON_USE_MIRRORS=n bundle exec build -e local agent-runtime-master el-7-x86_64'
-RUN tar -czpvf /root/opt_puppetlabs_backup.tgz /opt/puppetlabs
-RUN rm -rf /opt/puppetlabs
+RUN /bin/bash -l -c 'cd puppet-runtime && VANAGON_USE_MIRRORS=n build -e local agent-runtime-6.4.x el-7-x86_64'
+RUN /bin/bash -l -c 'cd puppet-runtime && VANAGON_USE_MIRRORS=n build -e local agent-runtime-master el-7-x86_64'
+#RUN rm -rf /opt/puppetlabs
 
 ## Build agent
 # Point to the local runtime build
 RUN cd puppet-agent && sed -i 's|http://.*/artifacts/|file:///puppet-runtime/output|' configs/components/puppet-runtime.json
 
 # Things only needed by the agent build that break the runtime builds
-RUN /bin/bash -l -c 'cd pl-build-tools-vanagon && VANAGON_USE_MIRRORS=n bundle exec build -e local pl-openssl el-7-x86_64'
-RUN /bin/bash -l -c 'cd pl-build-tools-vanagon && VANAGON_USE_MIRRORS=n bundle exec build -e local pl-boost el-7-x86_64'
+RUN /bin/bash -l -c 'cd pl-build-tools-vanagon && VANAGON_USE_MIRRORS=n build -e local pl-openssl el-7-x86_64'
+RUN /bin/bash -l -c 'cd pl-build-tools-vanagon && VANAGON_USE_MIRRORS=n build -e local pl-boost el-7-x86_64'
 RUN cd pl-build-tools-vanagon && find output -name *.rpm | xargs yum -y install
-RUN /bin/bash -l -c 'cd pl-build-tools-vanagon && VANAGON_USE_MIRRORS=n bundle exec build -e local pl-curl el-7-x86_64'
-RUN /bin/bash -l -c 'cd pl-build-tools-vanagon && VANAGON_USE_MIRRORS=n bundle exec build -e local pl-yaml-cpp el-7-x86_64'
+RUN /bin/bash -l -c 'cd pl-build-tools-vanagon && VANAGON_USE_MIRRORS=n build -e local pl-curl el-7-x86_64'
+RUN /bin/bash -l -c 'cd pl-build-tools-vanagon && VANAGON_USE_MIRRORS=n build -e local pl-yaml-cpp el-7-x86_64'
 RUN cd pl-build-tools-vanagon && find output -name *.rpm | xargs yum -y install
 
 # Work around leatherman insanity
-RUN echo /opt/pl-build-tools/lib | tee -a /etc/ld.so.conf && echo /opt/pl-build-tools/lib64 | tee -a /etc/ld.so.conf && ldconfig
+RUN echo /opt/puppetlabs/puppet/lib | tee -a /etc/ld.so.conf
+RUN echo /opt/pl-build-tools/lib | tee -a /etc/ld.so.conf
+RUN echo /opt/pl-build-tools/lib64 | tee -a /etc/ld.so.conf
+RUN ldconfig
 
 # Work around the broken gemfile
 
 RUN /bin/bash -l -c 'gem install rspec'
-RUN /bin/bash -l -c 'cd puppet-agent && VANAGON_USE_MIRRORS=n bundle exec build -e local puppet-agent el-7-x86_64'
+RUN sed -i 's/-k -C/--skip-old-files -C/' puppet-agent/configs/components/puppet-runtime.rb
+RUN rm -f puppet-agent/Gemfile.lock
+RUN /bin/bash -l -c 'cd puppet-agent && VANAGON_USE_MIRRORS=n build -e local puppet-agent el-7-x86_64'
 
 # Drop into a shell for building
 CMD /bin/bash
