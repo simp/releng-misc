@@ -50,10 +50,17 @@ RUN cd pl-build-tools-vanagon && git describe --tags | xargs git checkout
 RUN cd puppet-agent && git describe --tags | xargs git checkout
 RUN cd puppet-runtime && git describe --tags | xargs git checkout
 
+## Keep some cruft off of the system
+RUN /bin/bash -l -c 'echo "gem: --no-document" | tee -a $HOME/.gemrc'
+
 ## Install the gems
 RUN /bin/bash -l -c 'cd pl-build-tools-vanagon && bundle install'
 RUN /bin/bash -l -c 'cd puppet-agent && bundle install'
 RUN /bin/bash -l -c 'cd puppet-runtime && bundle install'
+
+## The different repos hard code things differently but (I think) all that
+## matters is what gets hardcoded into puppet-runtime
+RUN /bin/cp -r puppet-runtime/configs pl-build-tools-vanagon
 
 ## Build vanagon tools
 RUN /bin/bash -l -c 'cd pl-build-tools-vanagon && VANAGON_USE_MIRRORS=n build -e local pl-gcc el-7-x86_64'
@@ -67,7 +74,6 @@ RUN cd pl-build-tools-vanagon && find output -name *.rpm | xargs yum -y install
 RUN /bin/bash -l -c 'cd puppet-runtime && bundle install'
 RUN /bin/bash -l -c 'cd puppet-runtime && VANAGON_USE_MIRRORS=n build -e local agent-runtime-6.4.x el-7-x86_64'
 RUN /bin/bash -l -c 'cd puppet-runtime && VANAGON_USE_MIRRORS=n build -e local agent-runtime-master el-7-x86_64'
-#RUN rm -rf /opt/puppetlabs
 
 ## Build agent
 # Point to the local runtime build
@@ -82,16 +88,18 @@ RUN /bin/bash -l -c 'cd pl-build-tools-vanagon && VANAGON_USE_MIRRORS=n build -e
 RUN cd pl-build-tools-vanagon && find output -name *.rpm | xargs yum -y install
 
 # Work around leatherman insanity
-RUN echo /opt/puppetlabs/puppet/lib | tee -a /etc/ld.so.conf
 RUN echo /opt/pl-build-tools/lib | tee -a /etc/ld.so.conf
 RUN echo /opt/pl-build-tools/lib64 | tee -a /etc/ld.so.conf
 RUN ldconfig
 
 # Work around the broken gemfile
-
 RUN /bin/bash -l -c 'gem install rspec'
+
+# The existing tar command gets mad if things are already down in
+# /opt/puppetlabs which doesn't make any sense
 RUN sed -i 's/-k -C/--skip-old-files -C/' puppet-agent/configs/components/puppet-runtime.rb
-RUN rm -f puppet-agent/Gemfile.lock
+
+# Actually try to build the agent!
 RUN /bin/bash -l -c 'cd puppet-agent && VANAGON_USE_MIRRORS=n build -e local puppet-agent el-7-x86_64'
 
 # Drop into a shell for building
