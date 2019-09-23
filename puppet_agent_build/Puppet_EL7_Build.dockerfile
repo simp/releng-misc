@@ -58,9 +58,13 @@ RUN /bin/bash -l -c 'cd pl-build-tools-vanagon && bundle install'
 RUN /bin/bash -l -c 'cd puppet-agent && bundle install'
 RUN /bin/bash -l -c 'cd puppet-runtime && bundle install'
 
-## The different repos hard code things differently but (I think) all that
-## matters is what gets hardcoded into puppet-runtime
-RUN /bin/cp -r puppet-runtime/configs pl-build-tools-vanagon
+## The different repos hard code things differently and will fail to run
+RUN  pkg_version=`grep pkg.version puppet-runtime/configs/components/boost.rb | head -1` && sed -i "s/pkg\.version .*/$pkg_version/g" pl-build-tools-vanagon/configs/components/boost.rb
+RUN  pkg_md5sum=`grep pkg.md5sum puppet-runtime/configs/components/boost.rb | head -1` && sed -i "s/pkg\.md5sum .*/$pkg_md5sum/g" pl-build-tools-vanagon/configs/components/boost.rb
+RUN  pkg_version=`grep pkg.version puppet-runtime/configs/components/curl.rb | head -1` && sed -i "s/pkg\.version .*/$pkg_version/g" pl-build-tools-vanagon/configs/components/curl.rb
+RUN  pkg_md5sum=`grep pkg.md5sum puppet-runtime/configs/components/curl.rb | head -1` && sed -i "s/pkg\.md5sum .*/$pkg_md5sum/g" pl-build-tools-vanagon/configs/components/curl.rb
+RUN sed -i 's/0\.5\.3/0.6.2/g' pl-build-tools-vanagon/configs/components/yaml-cpp.rb
+RUN  sed -i "s/pkg\.md5sum .*/pkg.md5sum '5b943e9af0060d0811148b037449ef82'/g" pl-build-tools-vanagon/configs/components/yaml-cpp.rb
 
 ## Build vanagon tools
 RUN /bin/bash -l -c 'cd pl-build-tools-vanagon && VANAGON_USE_MIRRORS=n build -e local pl-gcc el-7-x86_64'
@@ -70,7 +74,9 @@ RUN /bin/bash -l -c 'cd pl-build-tools-vanagon && VANAGON_USE_MIRRORS=n build -e
 RUN cd pl-build-tools-vanagon && find output -name *.rpm | xargs yum -y install
 
 ## Build runtime
-# rename 6.4.x master *
+## Set to system openssl due to build issues
+RUN for x in puppet-runtime/configs/projects/_shared-*; do echo 'proj.setting(:system_openssl, true)' >> $x; done
+
 RUN /bin/bash -l -c 'cd puppet-runtime && bundle install'
 RUN /bin/bash -l -c 'cd puppet-runtime && VANAGON_USE_MIRRORS=n build -e local agent-runtime-6.4.x el-7-x86_64'
 RUN /bin/bash -l -c 'cd puppet-runtime && VANAGON_USE_MIRRORS=n build -e local agent-runtime-master el-7-x86_64'
@@ -82,9 +88,9 @@ RUN cd puppet-agent && sed -i 's|http://.*/artifacts/|file:///puppet-runtime/out
 # Things only needed by the agent build that break the runtime builds
 RUN /bin/bash -l -c 'cd pl-build-tools-vanagon && VANAGON_USE_MIRRORS=n build -e local pl-openssl el-7-x86_64'
 RUN /bin/bash -l -c 'cd pl-build-tools-vanagon && VANAGON_USE_MIRRORS=n build -e local pl-boost el-7-x86_64'
+RUN /bin/bash -l -c 'cd pl-build-tools-vanagon && VANAGON_USE_MIRRORS=n build -e local pl-yaml-cpp el-7-x86_64'
 RUN cd pl-build-tools-vanagon && find output -name *.rpm | xargs yum -y install
 RUN /bin/bash -l -c 'cd pl-build-tools-vanagon && VANAGON_USE_MIRRORS=n build -e local pl-curl el-7-x86_64'
-RUN /bin/bash -l -c 'cd pl-build-tools-vanagon && VANAGON_USE_MIRRORS=n build -e local pl-yaml-cpp el-7-x86_64'
 RUN cd pl-build-tools-vanagon && find output -name *.rpm | xargs yum -y install
 
 # Work around leatherman insanity
@@ -98,6 +104,11 @@ RUN /bin/bash -l -c 'gem install rspec'
 # The existing tar command gets mad if things are already down in
 # /opt/puppetlabs which doesn't make any sense
 RUN sed -i 's/-k -C/--skip-old-files -C/' puppet-agent/configs/components/puppet-runtime.rb
+
+# No idea why we have to do this
+RUN /bin/bash -l -c '/opt/puppetlabs/puppet/bin/gem install bundler'
+RUN /bin/bash -l -c '/opt/puppetlabs/puppet/bin/gem install rspec'
+RUN /bin/bash -l -c '/opt/puppetlabs/puppet/bin/gem install mocha'
 
 # Actually try to build the agent!
 RUN /bin/bash -l -c 'cd puppet-agent && VANAGON_USE_MIRRORS=n build -e local puppet-agent el-7-x86_64'
