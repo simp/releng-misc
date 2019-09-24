@@ -46,7 +46,8 @@ RUN git clone https://github.com/puppetlabs/puppet-agent.git
 RUN git clone https://github.com/puppetlabs/puppet-runtime.git
 
 ## Checkout latest tags
-RUN cd pl-build-tools-vanagon && git describe --tags | xargs git checkout
+# pl-build-tools-vanagon doesn't tag :-|
+RUN cd pl-build-tools-vanagon
 RUN cd puppet-agent && git describe --tags | xargs git checkout
 RUN cd puppet-runtime && git describe --tags | xargs git checkout
 
@@ -57,14 +58,6 @@ RUN /bin/bash -l -c 'echo "gem: --no-document" | tee -a $HOME/.gemrc'
 RUN /bin/bash -l -c 'cd pl-build-tools-vanagon && bundle install'
 RUN /bin/bash -l -c 'cd puppet-agent && bundle install'
 RUN /bin/bash -l -c 'cd puppet-runtime && bundle install'
-
-## The different repos hard code things differently and will fail to run
-RUN  pkg_version=`grep pkg.version puppet-runtime/configs/components/boost.rb | head -1` && sed -i "s/pkg\.version .*/$pkg_version/g" pl-build-tools-vanagon/configs/components/boost.rb
-RUN  pkg_md5sum=`grep pkg.md5sum puppet-runtime/configs/components/boost.rb | head -1` && sed -i "s/pkg\.md5sum .*/$pkg_md5sum/g" pl-build-tools-vanagon/configs/components/boost.rb
-RUN  pkg_version=`grep pkg.version puppet-runtime/configs/components/curl.rb | head -1` && sed -i "s/pkg\.version .*/$pkg_version/g" pl-build-tools-vanagon/configs/components/curl.rb
-RUN  pkg_md5sum=`grep pkg.md5sum puppet-runtime/configs/components/curl.rb | head -1` && sed -i "s/pkg\.md5sum .*/$pkg_md5sum/g" pl-build-tools-vanagon/configs/components/curl.rb
-RUN sed -i 's/0\.5\.3/0.6.2/g' pl-build-tools-vanagon/configs/components/yaml-cpp.rb
-RUN  sed -i "s/pkg\.md5sum .*/pkg.md5sum '5b943e9af0060d0811148b037449ef82'/g" pl-build-tools-vanagon/configs/components/yaml-cpp.rb
 
 ## Build vanagon tools
 RUN /bin/bash -l -c 'cd pl-build-tools-vanagon && VANAGON_USE_MIRRORS=n build -e local pl-gcc el-7-x86_64'
@@ -79,11 +72,12 @@ RUN for x in puppet-runtime/configs/projects/_shared-*; do echo 'proj.setting(:s
 
 RUN /bin/bash -l -c 'cd puppet-runtime && bundle install'
 RUN /bin/bash -l -c 'cd puppet-runtime && VANAGON_USE_MIRRORS=n build -e local agent-runtime-6.4.x el-7-x86_64'
+
+# Things are hard coded to 'master' and I don't want to figure out how to fix them
+#RUN cd puppet-runtime/output && rename 6.4.x master *
 RUN /bin/bash -l -c 'cd puppet-runtime && VANAGON_USE_MIRRORS=n build -e local agent-runtime-master el-7-x86_64'
 
 ## Build agent
-# Point to the local runtime build
-RUN cd puppet-agent && sed -i 's|http://.*/artifacts/|file:///puppet-runtime/output|' configs/components/puppet-runtime.json
 
 # Things only needed by the agent build that break the runtime builds
 RUN /bin/bash -l -c 'cd pl-build-tools-vanagon && VANAGON_USE_MIRRORS=n build -e local pl-openssl el-7-x86_64'
@@ -91,24 +85,25 @@ RUN /bin/bash -l -c 'cd pl-build-tools-vanagon && VANAGON_USE_MIRRORS=n build -e
 RUN /bin/bash -l -c 'cd pl-build-tools-vanagon && VANAGON_USE_MIRRORS=n build -e local pl-yaml-cpp el-7-x86_64'
 RUN cd pl-build-tools-vanagon && find output -name *.rpm | xargs yum -y install
 RUN /bin/bash -l -c 'cd pl-build-tools-vanagon && VANAGON_USE_MIRRORS=n build -e local pl-curl el-7-x86_64'
-RUN cd pl-build-tools-vanagon && find output -name *.rpm | xargs yum -y install
 
-# Work around leatherman insanity
-RUN echo /opt/pl-build-tools/lib | tee -a /etc/ld.so.conf
-RUN echo /opt/pl-build-tools/lib64 | tee -a /etc/ld.so.conf
-RUN ldconfig
+# So, it turns out that vanagon diffs the filesystem to figure out what to include in the packages :-|
+RUN yum remove -y 'pl-*'
+RUN rm -rf /opt/pl-* /opt/puppet*
 
-# Work around the broken gemfile
-RUN /bin/bash -l -c 'gem install rspec'
+# Set up a local YUM repo for puppet-agent to build from
+RUN mkdir /tmp/repo
+RUN find /pl-build-tools-vanagon/output -name "*.rpm" -exec cp {} /tmp/repo \;
+RUN /bin/bash -l -c 'cd /tmp/repo && createrepo .'
+RUN echo -e "[pl-local]\nbaseurl=file:///tmp/repo\ngpgcheck=0" > /etc/yum.repos.d/pl-local.repo
 
-# The existing tar command gets mad if things are already down in
-# /opt/puppetlabs which doesn't make any sense
-RUN sed -i 's/-k -C/--skip-old-files -C/' puppet-agent/configs/components/puppet-runtime.rb
+# The facter tests break due to something wrong with the gem path
+RUN sed -i 's/^[[:space:]]*tests[[:space:]]*$/[]/' puppet-agent/configs/components/facter.rb
 
-# No idea why we have to do this
-RUN /bin/bash -l -c '/opt/puppetlabs/puppet/bin/gem install bundler'
-RUN /bin/bash -l -c '/opt/puppetlabs/puppet/bin/gem install rspec'
-RUN /bin/bash -l -c '/opt/puppetlabs/puppet/bin/gem install mocha'
+# Point to the local runtime build
+RUN echo "{\"location\":\"file:///puppet-runtime/output\",\"version\":\"`ls puppet-runtime/output/agent-runtime-*master*.json | head -1 | sed -e 's/.*master-\(.*\)\.el-7.*/\1/'`\"}" > puppet-agent/configs/components/puppet-runtime.json
+
+# Install required packages
+RUN yum -y install pl-curl pl-cmake pl-gcc pl-gettext pl-boost
 
 # Actually try to build the agent!
 RUN /bin/bash -l -c 'cd puppet-agent && VANAGON_USE_MIRRORS=n build -e local puppet-agent el-7-x86_64'
