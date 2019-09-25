@@ -6,99 +6,120 @@
 # If using buildah, you probably want to build this as follows since various
 # things might fail over time:
 #   * buildah bud --layers=true -f <filename> .
-FROM centos:7
+
+# Build upstream Ruby
+FROM centos:7 as ruby
 ENV container docker
 
-## Fix issues with overlayfs
-RUN yum clean all
-RUN rm -f /var/lib/rpm/__db*
-RUN yum clean all
-RUN yum install -y yum-plugin-ovl || :
-RUN yum install -y yum-utils
+RUN yum -y groupinstall "Development Tools"
+RUN yum -y install wget openssl-devel
 
-RUN yum install -y selinux-policy-targeted selinux-policy-devel policycoreutils policycoreutils-python
-
-## Install necessary packages
-RUN yum-config-manager --enable extras
-RUN yum install -y epel-release
-RUN yum install -y openssl util-linux rpm-build augeas-devel git gnupg2 libicu-devel libxml2 libxml2-devel libxslt libxslt-devel rpmdevtools which rpm-devel rpm-sign
-RUN yum -y install fontconfig dejavu-sans-fonts dejavu-sans-mono-fonts dejavu-serif-fonts dejavu-fonts-common libjpeg-devel zlib-devel openssl-devel
-RUN yum install -y libyaml-devel glibc-headers autoconf gcc gcc-c++ glibc-devel readline-devel libffi-devel automake libtool bison sqlite-devel cmake
-
-## Update all packages
-RUN yum update -y
-
-## Set up upstream Ruby
 RUN curl -O https://cache.ruby-lang.org/pub/ruby/2.5/ruby-2.5.6.tar.gz
 RUN tar -xzpvf ruby-2.5.6.tar.gz
-RUN cd ruby-2.5.6; ./configure; make; make install
 
-## Check out a copy of the puppet components for building
-RUN git clone https://github.com/puppetlabs/pl-build-tools-vanagon.git
-RUN git clone https://github.com/puppetlabs/puppet-agent.git
-RUN git clone https://github.com/puppetlabs/puppet-runtime.git
+WORKDIR /ruby-2.5.6
+RUN ./configure && make && make install
+RUN /bin/bash -l -c 'gem install bundler'
 
-## Checkout latest tags
-# pl-build-tools-vanagon doesn't tag :-|
-RUN cd pl-build-tools-vanagon
-RUN cd puppet-agent && git describe --tags | xargs git checkout
-RUN cd puppet-runtime && git describe --tags | xargs git checkout
+FROM centos:7 as pl-build-tools
+ENV container docker
 
-## Keep some cruft off of the system
+COPY --from=ruby /usr/local/bin /usr/local/bin
+COPY --from=ruby /usr/local/include /usr/local/include
+COPY --from=ruby /usr/local/lib /usr/local/lib
+COPY --from=ruby /usr/local/share /usr/local/share
+
+RUN yum -y groupinstall "Development Tools"
+RUN yum -y install wget openssl-devel
+
 RUN /bin/bash -l -c 'echo "gem: --no-document" | tee -a $HOME/.gemrc'
 
-## Install the gems
-RUN /bin/bash -l -c 'gem install bundler'
-RUN /bin/bash -l -c 'cd pl-build-tools-vanagon && bundle install'
-RUN /bin/bash -l -c 'cd puppet-agent && bundle install'
-RUN /bin/bash -l -c 'cd puppet-runtime && bundle install'
+# pl-build-tools-vanagon doesn't tag :'-(
+RUN git clone https://github.com/puppetlabs/pl-build-tools-vanagon.git
 
-## Build vanagon tools
-RUN /bin/bash -l -c 'cd pl-build-tools-vanagon && VANAGON_USE_MIRRORS=n build -e local pl-gcc el-7-x86_64'
-RUN /bin/bash -l -c 'cd pl-build-tools-vanagon && VANAGON_USE_MIRRORS=n build -e local pl-cmake el-7-x86_64'
-RUN /bin/bash -l -c 'cd pl-build-tools-vanagon && VANAGON_USE_MIRRORS=n build -e local pl-gettext el-7-x86_64'
-RUN /bin/bash -l -c 'cd pl-build-tools-vanagon && VANAGON_USE_MIRRORS=n build -e local pl-ruby el-7-x86_64'
-RUN cd pl-build-tools-vanagon && find output -name *.rpm | xargs yum -y install
+WORKDIR /pl-build-tools-vanagon
+RUN /bin/bash -l -c 'bundle install'
+RUN sed -i '/plat\.add_build_repository/d' configs/platforms/*.rb
+RUN /bin/bash -l -c 'VANAGON_USE_MIRRORS=n build -e local pl-gcc el-7-x86_64'
+RUN /bin/bash -l -c 'VANAGON_USE_MIRRORS=n build -e local pl-cmake el-7-x86_64'
+RUN /bin/bash -l -c 'VANAGON_USE_MIRRORS=n build -e local pl-gettext el-7-x86_64'
+RUN /bin/bash -l -c 'VANAGON_USE_MIRRORS=n build -e local pl-ruby el-7-x86_64'
+RUN find output -name *.rpm | xargs yum -y install
+RUN /bin/bash -l -c 'VANAGON_USE_MIRRORS=n build -e local pl-openssl el-7-x86_64'
+RUN /bin/bash -l -c 'VANAGON_USE_MIRRORS=n build -e local pl-boost el-7-x86_64'
+RUN /bin/bash -l -c 'VANAGON_USE_MIRRORS=n build -e local pl-yaml-cpp el-7-x86_64'
+RUN find output -name *.rpm | xargs yum -y install
+RUN /bin/bash -l -c 'VANAGON_USE_MIRRORS=n build -e local pl-curl el-7-x86_64'
 
-## Build runtime
-## Set to system openssl due to build issues
-RUN for x in puppet-runtime/configs/projects/_shared-*; do echo 'proj.setting(:system_openssl, true)' >> $x; done
+FROM centos:7 as puppet-runtime
+ENV container docker
 
-RUN /bin/bash -l -c 'cd puppet-runtime && bundle install'
-RUN /bin/bash -l -c 'cd puppet-runtime && VANAGON_USE_MIRRORS=n build -e local agent-runtime-master el-7-x86_64'
+COPY --from=ruby /usr/local/bin /usr/local/bin
+COPY --from=ruby /usr/local/include /usr/local/include
+COPY --from=ruby /usr/local/lib /usr/local/lib
+COPY --from=ruby /usr/local/share /usr/local/share
 
-## Build agent
+RUN yum -y groupinstall "Development Tools"
+RUN yum -y install wget openssl openssl-devel java which
+RUN yum -y install createrepo
 
-# Things only needed by the agent build that break the runtime builds
-RUN /bin/bash -l -c 'cd pl-build-tools-vanagon && VANAGON_USE_MIRRORS=n build -e local pl-openssl el-7-x86_64'
-RUN /bin/bash -l -c 'cd pl-build-tools-vanagon && VANAGON_USE_MIRRORS=n build -e local pl-boost el-7-x86_64'
-RUN /bin/bash -l -c 'cd pl-build-tools-vanagon && VANAGON_USE_MIRRORS=n build -e local pl-yaml-cpp el-7-x86_64'
-RUN cd pl-build-tools-vanagon && find output -name *.rpm | xargs yum -y install
-RUN /bin/bash -l -c 'cd pl-build-tools-vanagon && VANAGON_USE_MIRRORS=n build -e local pl-curl el-7-x86_64'
+RUN /bin/bash -l -c 'echo "gem: --no-document" | tee -a $HOME/.gemrc'
 
-# It turns out that vanagon diffs the filesystem to figure out what to include in the packages :-|
-RUN yum remove -y 'pl-*'
-RUN rm -rf /opt/pl-* /opt/puppet*
+COPY --from=pl-build-tools /pl-build-tools-vanagon/output /tmp/build-tools
 
-# Set up a local YUM repo for puppet-agent to build from
 RUN mkdir /tmp/repo
-RUN find /pl-build-tools-vanagon/output -name "*.rpm" -exec cp {} /tmp/repo \;
+RUN find /tmp/build-tools -name "*.rpm" -exec cp {} /tmp/repo \;
 RUN /bin/bash -l -c 'cd /tmp/repo && createrepo .'
 RUN echo -e "[pl-local]\nbaseurl=file:///tmp/repo\ngpgcheck=0" > /etc/yum.repos.d/pl-local.repo
 
-# The facter tests break due to something wrong with the gem path
-RUN sed -i 's/^[[:space:]]*tests[[:space:]]*$/[]/' puppet-agent/configs/components/facter.rb
+RUN git clone https://github.com/puppetlabs/puppet-runtime.git
 
-# Point to the local runtime build
-RUN echo "{\"location\":\"file:///puppet-runtime/output\",\"version\":\"`ls puppet-runtime/output/agent-runtime-*master*.json | head -1 | sed -e 's/.*master-\(.*\)\.el-7.*/\1/'`\"}" > puppet-agent/configs/components/puppet-runtime.json
+WORKDIR /puppet-runtime
+RUN git describe --tags | xargs git checkout
+RUN /bin/bash -l -c 'bundle install'
+RUN for x in configs/projects/_shared-*; do echo 'proj.setting(:system_openssl, true)' >> $x; done
+RUN sed -i '/plat\.add_build_repository/d' configs/platforms/*.rb
+RUN /bin/bash -l -c 'VANAGON_USE_MIRRORS=n build -e local agent-runtime-master el-7-x86_64'
 
-# Install required packages
-RUN yum -y install pl-curl pl-cmake pl-gcc pl-gettext pl-boost
 
-RUN rm -rf /opt/puppetlabs
+FROM centos:7 as puppet-agent
+ENV container docker
 
-# Actually try to build the agent!
-RUN /bin/bash -l -c 'cd puppet-agent && VANAGON_USE_MIRRORS=n build -e local puppet-agent el-7-x86_64'
+COPY --from=ruby /usr/local/bin /usr/local/bin
+COPY --from=ruby /usr/local/include /usr/local/include
+COPY --from=ruby /usr/local/lib /usr/local/lib
+COPY --from=ruby /usr/local/share /usr/local/share
 
-# Drop into a shell for building
+RUN yum -y groupinstall "Development Tools"
+RUN yum -y install wget openssl openssl-devel which
+RUN yum -y install createrepo
+
+RUN /bin/bash -l -c 'echo "gem: --no-document" | tee -a $HOME/.gemrc'
+
+COPY --from=pl-build-tools /pl-build-tools-vanagon/output /tmp/build-tools
+
+RUN mkdir /tmp/repo
+RUN find /tmp/build-tools -name "*.rpm" -exec cp {} /tmp/repo \;
+RUN /bin/bash -l -c 'cd /tmp/repo && createrepo .'
+RUN echo -e "[pl-local]\nbaseurl=file:///tmp/repo\ngpgcheck=0" > /etc/yum.repos.d/pl-local.repo
+
+RUN yum -y install pl-cmake pl-gcc pl-gettext
+
+COPY --from=puppet-runtime /puppet-runtime/output /tmp/puppet-runtime
+
+RUN git clone https://github.com/puppetlabs/puppet-agent.git
+
+WORKDIR /puppet-agent
+RUN git describe --tags | xargs git checkout
+RUN /bin/bash -l -c 'bundle install'
+#RUN sed -i 's/^[[:space:]]*tests[[:space:]]*$/[]/' configs/components/facter.rb
+
+RUN echo "{\"location\":\"file:///tmp/puppet-runtime\",\"version\":\"`ls /tmp/puppet-runtime/agent-runtime-*master*.json | head -1 | sed -e 's/.*master-\(.*\)\.el-7.*/\1/'`\"}" > configs/components/puppet-runtime.json
+
+RUN sed -i '/plat\.add_build_repository/d' configs/platforms/*.rb
+
+RUN /bin/bash -l -c 'gem install rspec mocha'
+
+RUN /bin/bash -l -c 'VANAGON_USE_MIRRORS=n build -e local puppet-agent el-7-x86_64'
+
 CMD /bin/bash
