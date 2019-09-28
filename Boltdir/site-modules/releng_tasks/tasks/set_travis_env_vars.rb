@@ -40,12 +40,12 @@ warn '===== t options', options.to_yaml
 script_file = File.join(options['_installdir'],'releng_tasks/files/set_travis_env_vars.rb')
 warn "script_file: '#{script_file}' (#{File.exist?(script_file)})"
 warn "TASK __FILE__: '#{__FILE__}'  $0: '#{$0}'"
-require script_file
 
 begin
+  require script_file
   TravisCIOrgEnvSetter.run(options)
 rescue Exception => e
-  puts error_hash( 
+  puts error_hash(
      "An Error (#{e.class}) occurred: ! (#{e.message})",
      e.class,
      {
