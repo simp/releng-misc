@@ -1,0 +1,41 @@
+{
+  "puppet_task_version": 1,
+  "supports_noop": false,
+  "description": "Set/Delete variables across many Travis CI repos",
+  "supports_noop": false,
+  "parameters": {
+    "travis_token": {
+      "description": "Travis API token for the target projects",
+      "type":  "String[1]",
+      "sensitive": true
+    },
+    "action": {
+      "description": "Whether to set or delete the variable",
+      "type": "Enum[set,delete]"
+    },
+    "variable": {
+      "description": "The variable to set or delete",
+      "type": "Pattern[/\\A(?i-mx:[a-z][a-z0-9_]*)\\Z/]"
+    },
+    "value": {
+      "description": "The value to set (required when 'action' is 'set')",
+      "type": "Optional[String[1]]",
+      "sensitive": true
+    },
+    "org": {
+      "description": "Name of the Travis (i.e., GitHub) organization to update.  All repos under the org will be affected unless 'repo_filter' or 'repos' are also specified",
+      "type": "Pattern[/\\A(?i:[a-z][a-z0-9_-]*)\\Z/]"
+    },
+    "repo_filter": {
+      "description": "Substring to filter repos to affect.",
+      "type": "Optional[Pattern[/\\A(?i:[a-z][a-z0-9_-]*)\\Z/]]"
+    },
+    "repos": {
+      "description": "Specific repo names to affect.",
+      "type": "Optional[Array[Pattern[/\\A(?i:[a-z][a-z0-9_-])\\Z/]]]"
+    }
+  },
+  "files": [
+    "releng_tasks/files/set_travis_env_vars.rb"
+  ]
+}
