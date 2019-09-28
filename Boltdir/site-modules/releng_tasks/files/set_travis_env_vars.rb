@@ -25,11 +25,13 @@
 require 'json'
 require 'optparse'
 require 'yaml'
+require 'logger'
 
 require_relative 'http_request'
+
 class TravisCIOrgEnvSetter
   attr_accessor :dry_run, :verbose, :travis_api
-  def initialize(travis_token, org, travis_api=nil)
+  def initialize(travis_token, org, logdest=STDERR, travis_api=nil)
     @org          = org
     @travis_token = travis_token
     @travis_api   = travis_api || 'https://api.travis-ci.com'
@@ -38,7 +40,7 @@ class TravisCIOrgEnvSetter
       'Authorization' => "token #{@travis_token}"
     }
     @dry_run = false
-    @verbose = false
+    @logger  = Logger.new(logdest)
   end
 
   def travis_http(api_url, opts = {})
@@ -55,13 +57,14 @@ class TravisCIOrgEnvSetter
     org_repos_data = travis_http("#{@travis_api}/owner/#{@org}/repos")
     org_repos = org_repos_data['repositories']
     org_repos.map { |x| x['name'] }.sort.each do |repo_name|
-      warn "== repo '#{@org}/#{repo_name}'"
+      @logger.info "== repo '#{@org}/#{repo_name}'"
       repo = org_repos.select { |x| x['name'] == repo_name }.first
       yield repo
     end
   end
 
   def set_env_var(env_var_name, env_var_value, env_var_public)
+    result = ''
     body = {
       'env_var.name' => env_var_name,
       'env_var.value' => env_var_value,
@@ -74,11 +77,11 @@ class TravisCIOrgEnvSetter
 
       existing_env_vars = env_vars.select { |x| x['name'] == env_var_name }
       if existing_env_vars.empty?
-        warn "  == Create env_var '#{env_var_name}'"
+        @logger.info  "  == Create env_var '#{env_var_name}'"
         travis_http("#{@travis_api}/repo/#{repo['id']}/env_vars", body: body)
       else
         env_var_id = existing_env_vars.first['id']
-        warn "  == Update env_var '#{env_var_name}' (#{env_var_id})"
+        @logger.info "  == Update env_var '#{env_var_name}' (#{env_var_id})"
         travis_http("#{@travis_api}/repo/#{repo['id']}/env_var/#{env_var_id}",
                     http_request_type: Net::HTTP::Patch,
                     body: body)
@@ -93,7 +96,7 @@ class TravisCIOrgEnvSetter
 
       existing_env_vars = env_vars.select { |x| x['name'] == env_var_name }
       if existing_env_vars.empty?
-        warn "  !! WARNING: env_var '#{env_var_name}' not found"
+        @logger.warn "  !! WARNING: env_var '#{env_var_name}' not found"
       else
         env_var_id = existing_env_vars.first['id']
         puts "  == Delete env_var '#{env_var_name}' (#{env_var_id})"
@@ -114,7 +117,8 @@ class TravisCIOrgEnvSetter
 
     travis_ci_org = TravisCIOrgEnvSetter.new(
       options['travis_token'],
-      options['org']
+      options['org'],
+      options['logdest'] || nil
     )
 
     case options['action']
