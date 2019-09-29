@@ -1,8 +1,8 @@
 # releng-misc
 
 <!-- vim-markdown-toc GFM -->
-
 * [Overview](#overview)
+* [Bolt tasks](#bolt-tasks)
 * [Contributing](#contributing)
 
 <!-- vim-markdown-toc -->
@@ -13,6 +13,14 @@ The goal of this project is to collect the various tools (script, config, notes,
 
 **WARNING** Things collected here may be broken, full of bugs, hard to use, and out-of-date.   Don't assume that anything here is   suitable to use in production without inspecting and testing it first.
 
+
+## Bolt tasks
+
+Some of these tasks are packaged as bolt tasks.  To see them, run:
+
+```sh
+bolt task show | grep releng_tasks
+```
 
 ## Contributing
 
