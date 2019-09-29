@@ -18,7 +18,7 @@ def read_structured_input
   options = {
     'action' => 'set',
     'public' => false,
-    'noop' => false,
+    '_noop' => false,
     'logdest' => StringIO.new,
   }
   raw_structured_input = ''
@@ -47,7 +47,7 @@ def run_wrapped_script(options)
       options['_installdir'],
       'releng_tasks/files/set_travis_env_vars.rb'
     )
-    TravisCIOrgEnvSetter.run(options)
+    TravisCIOrgEnvSetter.run(options.merge({'noop' => options['_noop']}))
   rescue Exception => e
     puts error_hash(
        "An Error (#{e.class}) occurred: ! (#{e.message})",

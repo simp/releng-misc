@@ -30,8 +30,8 @@ require 'logger'
 require_relative 'http_request'
 
 class TravisCIOrgEnvSetter
-  attr_accessor :dry_run, :verbose, :travis_api
-  def initialize(travis_token, org, logdest=STDERR, travis_api=nil)
+  attr_accessor :noop, :verbose, :travis_api
+  def initialize(travis_token, org, logdest=STDERR, noop=false, repo_filter=nil, travis_api=nil)
     @org          = org
     @travis_token = travis_token
     @travis_api   = travis_api || 'https://api.travis-ci.com'
@@ -39,9 +39,11 @@ class TravisCIOrgEnvSetter
       'Travis-Api-Version' => '3',
       'Authorization' => "token #{@travis_token}"
     }
-    @dry_run = false
+    @noop = noop
+    @repo_filter = repo_filter
     @logger  = Logger.new(logdest)
   end
+
 
   def travis_http(api_url, opts = {})
     opts[:headers] ||= {}
@@ -57,6 +59,9 @@ class TravisCIOrgEnvSetter
     org_repos_data = travis_http("#{@travis_api}/owner/#{@org}/repos")
     org_repos = org_repos_data['repositories']
     org_repos.map { |x| x['name'] }.sort.each do |repo_name|
+      if @repo_filter
+        next unless (repo_name =~ /#{@repo_filter}/)
+      end
       @logger.info "== repo '#{@org}/#{repo_name}'"
       repo = org_repos.select { |x| x['name'] == repo_name }.first
       yield repo
@@ -78,10 +83,18 @@ class TravisCIOrgEnvSetter
       existing_env_vars = env_vars.select { |x| x['name'] == env_var_name }
       if existing_env_vars.empty?
         @logger.info  "  == Create env_var '#{env_var_name}'"
+        if @noop
+          @logger.info '  -- NOOP: (skipping action)'
+          next
+        end
         travis_http("#{@travis_api}/repo/#{repo['id']}/env_vars", body: body)
       else
         env_var_id = existing_env_vars.first['id']
         @logger.info "  == Update env_var '#{env_var_name}' (#{env_var_id})"
+        if @noop
+          @logger.info '  -- NOOP: (skipping action)'
+          next
+        end
         travis_http("#{@travis_api}/repo/#{repo['id']}/env_var/#{env_var_id}",
                     http_request_type: Net::HTTP::Patch,
                     body: body)
@@ -99,7 +112,11 @@ class TravisCIOrgEnvSetter
         @logger.warn "  !! WARNING: env_var '#{env_var_name}' not found"
       else
         env_var_id = existing_env_vars.first['id']
-        puts "  == Delete env_var '#{env_var_name}' (#{env_var_id})"
+        @logger.info "  == Delete env_var '#{env_var_name}' (#{env_var_id})"
+        if @noop
+          @logger.info '  -- NOOP: (skipping action)'
+          next
+        end
         travis_http("#{@travis_api}/repo/#{repo['id']}/env_var/#{env_var_id}",
                     http_request_type: Net::HTTP::Delete)
       end
@@ -118,7 +135,9 @@ class TravisCIOrgEnvSetter
     travis_ci_org = TravisCIOrgEnvSetter.new(
       options['travis_token'],
       options['org'],
-      options['logdest'] || nil
+      options['logdest'] || nil,
+      options['noop'] || false,
+      options['repo_filter'] || nil
     )
 
     case options['action']
@@ -131,6 +150,7 @@ class TravisCIOrgEnvSetter
     when 'delete'
       travis_ci_org.delete_env_var(options['variable'])
     end
+
   end
 end
 
@@ -159,6 +179,12 @@ if __FILE__ == $PROGRAM_NAME
     opts.on(
       '--[no-]public',
       'Make env variable publicly visible (default: no)'
+    ) do |arg|
+      options['public'] = arg
+    end
+    opts.on(
+      '--[no-]noop',
+      'Print actions but do not change anything (default: no)'
     ) do |arg|
       options['public'] = arg
     end
