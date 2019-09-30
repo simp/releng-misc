@@ -160,11 +160,11 @@ if __FILE__ == $PROGRAM_NAME
 
   perma_opts = ''
   opt_parser = OptionParser.new do |opts|
-    opts.banner = '== simp environment new [options]'
+    opts.banner = "== #{File.basename($0)} [options]"
     opts.separator <<-HELP_MSG.gsub(/^ {4}/, '')
 
-      #{File.basename($PROGRAM_NAME)}: Set a Travis CI environment variable
-      across all of an organization's repositories
+      Set a Travis CI environment variable across all of an organization's
+      repositories
 
       Usage:
 

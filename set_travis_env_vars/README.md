@@ -2,21 +2,18 @@
 
 
 <!-- vim-markdown-toc GFM -->
-
 * [Description](#description)
   * [Why this is useful](#why-this-is-useful)
 * [Setup](#setup)
   * [Requirements](#requirements)
 * [Usage](#usage)
-* [Reference](#reference)
-* [Limitations](#limitations)
-* [Development](#development)
 
 <!-- vim-markdown-toc -->
 
 ## Description
 
-**sync-travis-env-var.rb** sets or deletes an organizations' secrets (e.g., release tokens) across multiple Travis CI projects
+**set_travis_env_vars.rb** sets or deletes an organizations' secrets (e.g.,
+release tokens) across multiple Travis CI projects
 
 
 ### Why this is useful
@@ -30,13 +27,8 @@ projects' settings at once.
 ### Requirements
 
 * MRI Ruby (tested with MRI Ruby 2.4.5)
-* A Travis API token 
+* A Travis API token
 
 ## Usage
 
-## Reference
-
-## Limitations
-
-## Development
-
+        TRAVIS_TOKEN=<TOKEN> set_travis_env_vars.rb [options] ORG VARIABLE [VALUE]
