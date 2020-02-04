@@ -6,10 +6,19 @@
 # If using buildah, you probably want to build this as follows since various
 # things might fail over time:
 #   * buildah bud --layers=true -f <filename> .
+#
+# You can choose to build a specific version of puppet by setting the
+# PUPPET_VERSION environment variable to a valid git reference in the
+# puppet-agent repository.
+#
+# By default, the latest tag will be built.
 
 # Build upstream Ruby
 FROM centos:7 as ruby
 ENV container docker
+
+ARG PUPPET_VERSION=latest
+ENV puppet_version=$PUPPET_VERSION
 
 RUN yum -y groupinstall "Development Tools"
 RUN yum -y install wget openssl-devel
@@ -110,6 +119,7 @@ COPY --from=puppet-runtime /puppet-runtime/output /tmp/puppet-runtime
 RUN git clone https://github.com/puppetlabs/puppet-agent.git
 
 WORKDIR /puppet-agent
+RUN if [ "${PUPPET_VERSION}" == 'latest' ]; then git checkout $(git describe --tags $(git rev-list --tags --max-count=1)); else git checkout "${PUPPET_VERSION}"; fi
 RUN git describe --tags | xargs git checkout
 RUN /bin/bash -l -c 'bundle install'
 #RUN sed -i 's/^[[:space:]]*tests[[:space:]]*$/[]/' configs/components/facter.rb
