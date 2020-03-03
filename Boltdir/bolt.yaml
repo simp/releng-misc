@@ -1,0 +1,5 @@
+---
+modulepath:
+  - ..
+  - modules
+  - site-modules
