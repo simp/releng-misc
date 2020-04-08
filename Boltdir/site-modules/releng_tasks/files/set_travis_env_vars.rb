@@ -56,12 +56,25 @@ class TravisCIOrgEnvSetter
   end
 
   def each_org_repo
-    org_repos_data = travis_http("#{@travis_api}/owner/#{@org}/repos")
-    org_repos = org_repos_data['repositories']
-    org_repos.map { |x| x['name'] }.sort.each do |repo_name|
-      if @repo_filter
-        next unless (repo_name =~ /#{@repo_filter}/)
-      end
+    org_repos = []
+
+    limit = 100
+    offset = 0
+    loop do
+      org_repos_data = travis_http("#{@travis_api}/owner/#{@org}/repos?offset=#{offset}&limit=#{limit}")
+      org_repos += org_repos_data['repositories']
+      @logger.info "-- found #{org_repos.size}/#{org_repos_data['@pagination']['count']} total org repos from API"
+      break if org_repos_data['@pagination']['is_last']
+      offset = org_repos_data['@pagination']['next']['offset']
+    end
+
+    sorted_repo_names = org_repos.map { |x| x['name'] }.sort
+    if @repo_filter
+      sorted_repo_names.select!{ |repo_name| repo_name =~ /#{@repo_filter}/ }
+      @logger.info "-- after filtering: #{sorted_repo_names.size} repos (org total: #{org_repos.size})"
+    end
+
+    sorted_repo_names.each do |repo_name|
       @logger.info "== repo '#{@org}/#{repo_name}'"
       repo = org_repos.select { |x| x['name'] == repo_name }.first
       yield repo
@@ -76,13 +89,15 @@ class TravisCIOrgEnvSetter
       'env_var.public' => env_var_public
     }.to_json
 
+    repos=[]
     each_org_repo do |repo|
       data = travis_http("#{@travis_api}/repo/#{repo['id']}/env_vars")
       env_vars = data['env_vars']
+      repos << repo
 
       existing_env_vars = env_vars.select { |x| x['name'] == env_var_name }
       if existing_env_vars.empty?
-        @logger.info  "  == Create env_var '#{env_var_name}'"
+        @logger.info  "  ++ Create env_var '#{env_var_name}'"
         if @noop
           @logger.info '  -- NOOP: (skipping action)'
           next
@@ -90,7 +105,8 @@ class TravisCIOrgEnvSetter
         travis_http("#{@travis_api}/repo/#{repo['id']}/env_vars", body: body)
       else
         env_var_id = existing_env_vars.first['id']
-        @logger.info "  == Update env_var '#{env_var_name}' (#{env_var_id})"
+        @logger.info "  ^^ Update env_var '#{env_var_name}'"
+        @logger.info "     [env_var id: #{env_var_id}]"
         if @noop
           @logger.info '  -- NOOP: (skipping action)'
           next
@@ -100,6 +116,7 @@ class TravisCIOrgEnvSetter
                     body: body)
       end
     end
+    @logger.info "  ==== REPOS: (#{repos.size})"
   end
 
   def delete_env_var(env_var_name)
@@ -137,7 +154,8 @@ class TravisCIOrgEnvSetter
       options['org'],
       options['logdest'] || nil,
       options['noop'] || false,
-      options['repo_filter'] || nil
+      options['repo_filter'] || nil,
+      options['travis_api'] || nil
     )
 
     case options['action']
@@ -190,6 +208,9 @@ if __FILE__ == $PROGRAM_NAME
     end
     opts.on('--delete', 'Delete env variable from all repos') do
       options['action'] = 'delete'
+    end
+    opts.on('--travis-api', 'Travis API URI (default: https://api.travis-ci.com)') do |arg|
+      options['travis_api'] = arg
     end
     opts.on('-h', '--help', 'Print this message and exit') do
       puts opts
