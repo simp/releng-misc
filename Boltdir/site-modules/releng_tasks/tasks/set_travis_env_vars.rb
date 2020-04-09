@@ -22,7 +22,8 @@ def read_structured_input
     'logdest' => StringIO.new,
   }
   raw_structured_input = ''
-  while input = STDIN.gets
+  source = File.exists?( ENV['STDIN_FILE'] || '' ) ? File.open(ENV['STDIN_FILE'],'r') : STDIN
+  while input = source.gets
     raw_structured_input += input
   end
 

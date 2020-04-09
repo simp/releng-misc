@@ -8,6 +8,10 @@
       "type":  "String[1]",
       "sensitive": true
     },
+    "org": {
+      "description": "Name of the Travis CI (i.e., GitHub) organization to update.\n\nNOTE: **All** repos under the org will be affected unless 'repo_filter' is also specified",
+      "type": "Pattern[/\\A(?i:[a-z][a-z0-9_-]*)\\Z/]"
+    },
     "action": {
       "description": "Whether to set or delete the variable",
       "type": "Enum[set,delete]"
@@ -21,13 +25,13 @@
       "type": "Optional[String[1]]",
       "sensitive": true
     },
-    "org": {
-      "description": "Name of the Travis (i.e., GitHub) organization to update.  All repos under the org will be affected unless 'repo_filter' is also specified",
-      "type": "Pattern[/\\A(?i:[a-z][a-z0-9_-]*)\\Z/]"
-    },
     "repo_filter": {
       "description": "Substring to filter repos to affect.",
-      "type": "Optional[String]"
+      "type": "Optional[String[1]]"
+    },
+    "travis_api": {
+      "description": "Travis API URI (default: https://api.travis-ci.com)",
+      "type": "Optional[Pattern[/\\A(?i:^https?:\\/\\/.+)/]]"
     }
   },
   "files": [
