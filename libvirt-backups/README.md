@@ -1,4 +1,6 @@
-Overview
+NOTE:  the latest changes are in https://github.com/jeannegreulich/libvirt-backups
+
+Overrview
 ________
 libvirt backups is a simple script that can be used to backup libvirt virtual
 machines.   It requires qemu-ev and its active block commit capabilities.
