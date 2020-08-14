@@ -35,7 +35,7 @@
     }
   },
   "files": [
-    "releng_tasks/files/set_travis_env_vars.rb",
-    "releng_tasks/files/http_request.rb"
+    "releng/files/set_travis_env_vars.rb",
+    "releng/files/http_request.rb"
   ]
 }

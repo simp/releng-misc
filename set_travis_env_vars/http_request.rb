@@ -1,1 +1,1 @@
-../Boltdir/site-modules/releng_tasks/files/http_request.rb
+../Boltdir/files/http_request.rb

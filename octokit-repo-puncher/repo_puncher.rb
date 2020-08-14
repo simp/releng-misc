@@ -1,4 +1,3 @@
-
 require 'octokit'
 
 class GitHubRepoPuncher
@@ -10,14 +9,14 @@ class GitHubRepoPuncher
     team_perms: {}
   }
 
-  def initialize(opts={})
+  def initialize(opts = {})
     @opts = DEFAULT_OPTS.merge(opts)
 
     if @opts[:debug]
       stack = Faraday::RackBuilder.new do |builder|
-       builder.response :logger
-       builder.use Octokit::Response::RaiseError
-       builder.adapter Faraday.default_adapter
+        builder.response :logger
+        builder.use Octokit::Response::RaiseError
+        builder.adapter Faraday.default_adapter
       end
       Octokit.middleware = stack
     end
@@ -33,11 +32,10 @@ class GitHubRepoPuncher
 
   def punch_repos(org = @opts[:org])
     @repos = @client.org_repos(org)
-    @repos.each{ |repo| punch_repo(repo) }
+    @repos.each { |repo| punch_repo(repo) }
   end
 
   def punch_repo(repo)
-
     puts "== #{repo.full_name} - #{repo.html_url}/settings"
     unless @opts[:repo_opts]
       puts "@opts has no :repo_opts!"
@@ -56,6 +54,7 @@ class GitHubRepoPuncher
     rescue Octokit::Forbidden => e
       warn e
       return if e.message =~ /Repository was archived so is read-only/
+
       require 'pry'; binding.pry
     end
 
@@ -63,7 +62,7 @@ class GitHubRepoPuncher
     # ------------------------
     puts "    - Set up team permissions (#{repo.full_name})"
     @opts[:team_perms].each do |team_slug, team_permission|
-      team_hash = @client.org_teams('simp').select{|x| x[:slug] == team_slug }.first
+      team_hash = @client.org_teams('simp').select { |x| x[:slug] == team_slug }.first
       team_id   = team_hash[:id]
 
       @client.add_team_repository(team_id, repo.full_name, permission: team_permission)
@@ -76,8 +75,7 @@ class GitHubRepoPuncher
     puts "    - Protect branches and apply protect_branch_opts (#{repo.full_name})"
     branches_to_protect = @client.branches(repo.full_name).select do |x|
       x[:protected] || (x[:name] =~ /^(master|simp-master|5\.X)/)
-    end.map{|x| x[:name]}
-
+    end.map { |x| x[:name] }
 
     branches_to_protect.each do |branch_name|
       opts = @opts[:protect_branch_opts]
@@ -85,12 +83,12 @@ class GitHubRepoPuncher
       if repo[:name] =~ /\A(pupmod-simp-dummy|gitlab-beaker-cleanup-driver)\Z/
         next
       end
-      @client.protect_branch( repo.full_name, branch_name, opts.merge(accept: @opts[:vnd_github_accept]) )
+
+      @client.protect_branch(repo.full_name, branch_name, opts.merge(accept: @opts[:vnd_github_accept]))
     end
     puts "    ++ COMPLETED: set up #{repo.full_name} - #{repo.html_url}/settings"
   end
 end
-
 
 # `luke-cage-preview` is needed for merge strategy and branch protection
 # https://docs.github.com/en/rest/reference/repos#pull-request-merge-configuration-settings
@@ -106,7 +104,7 @@ opts = {
     has_wiki: false,
     has_projects: false,
     has_downloads: false,
-    permissions: {admin: true, push: true, pull: true},
+    permissions: { admin: true, push: true, pull: true },
   },
   team_perms: {
     'reviewers' => 'push',
@@ -119,7 +117,7 @@ opts = {
       strict: true,
       contexts: [
         'WIP',
-        #'ci/gitlab/gitlab.com',
+        # 'ci/gitlab/gitlab.com',
         'Travis CI - Pull Request'
       ],
     },
@@ -134,5 +132,5 @@ opts = {
   }
 }
 opts[:vnd_github_accept] = ENV['VND_GITHUB_ACCEPT'] if ENV['VND_GITHUB_ACCEPT']
-puncher = GitHubRepoPuncher.new( opts )
+puncher = GitHubRepoPuncher.new(opts)
 puncher.punch_repos

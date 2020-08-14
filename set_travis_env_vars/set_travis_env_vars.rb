@@ -1,1 +1,1 @@
-../Boltdir/site-modules/releng_tasks/files/set_travis_env_vars.rb
+../Boltdir/files/set_travis_env_vars.rb

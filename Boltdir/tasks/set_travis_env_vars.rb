@@ -22,8 +22,8 @@ def read_structured_input
     'logdest' => StringIO.new,
   }
   raw_structured_input = ''
-  source = File.exists?( ENV['STDIN_FILE'] || '' ) ? File.open(ENV['STDIN_FILE'],'r') : STDIN
-  while input = source.gets
+  source = File.exist?( ENV['STDIN_FILE'] || '' ) ? File.open(ENV['STDIN_FILE'],'r') : STDIN
+  while ( input = source.gets )
     raw_structured_input += input
   end
 
@@ -49,7 +49,7 @@ def run_wrapped_script(options)
       'releng_tasks/files/set_travis_env_vars.rb'
     )
     TravisCIOrgEnvSetter.run(options.merge({'noop' => options['_noop']}))
-  rescue Exception => e
+  rescue StandardError => e
     puts error_hash(
        "An Error (#{e.class}) occurred: ! (#{e.message})",
        e.class,
@@ -69,7 +69,7 @@ run_wrapped_script(options)
 
 # Return Structured Output
 output = {
-  'options' => options.select { |k,v| k !~ /\A(_|travis_token|logdest)/ },
+  'options' => options.select { |k,_v| k !~ /\A(_|travis_token|logdest)/ },
   'log' => options['logdest'].string.split("\n"),
 }
 unless options['public']
