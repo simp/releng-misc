@@ -55,4 +55,3 @@ def http_request(uri, opts = {}, http_type = nil)
 
   response
 end
-

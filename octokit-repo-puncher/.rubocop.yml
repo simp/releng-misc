@@ -1,0 +1,4 @@
+---
+# The script is intended to drop down into a debugger during certain failures
+Lint/Debugger:
+  Enabled: false

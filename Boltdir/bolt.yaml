@@ -1,6 +1,0 @@
----
-modulepath:
-  - ..
-  - modules
-  - site-modules
-save-rerun: false

@@ -1,0 +1,4 @@
+---
+# Bolt tasks and files don't require execute permission
+Lint/ScriptPermission:
+  Enabled: false

@@ -31,7 +31,7 @@ require_relative 'http_request'
 
 class TravisCIOrgEnvSetter
   attr_accessor :noop, :verbose, :travis_api
-  def initialize(travis_token, org, logdest=STDERR, noop=false, repo_filter=nil, travis_api=nil)
+  def initialize(travis_token, org, logdest = STDERR, noop = false, repo_filter = nil, travis_api = nil)
     @org          = org
     @travis_token = travis_token
     @travis_api   = travis_api || 'https://api.travis-ci.com'
@@ -41,9 +41,8 @@ class TravisCIOrgEnvSetter
     }
     @noop = noop
     @repo_filter = repo_filter
-    @logger  = Logger.new(logdest)
+    @logger = Logger.new(logdest)
   end
-
 
   def travis_http(api_url, opts = {})
     opts[:headers] ||= {}
@@ -65,12 +64,13 @@ class TravisCIOrgEnvSetter
       org_repos += org_repos_data['repositories']
       @logger.info "-- found #{org_repos.size}/#{org_repos_data['@pagination']['count']} total org repos from API"
       break if org_repos_data['@pagination']['is_last']
+
       offset = org_repos_data['@pagination']['next']['offset']
     end
 
     sorted_repo_names = org_repos.map { |x| x['name'] }.sort
     if @repo_filter
-      sorted_repo_names.select!{ |repo_name| repo_name =~ /#{@repo_filter}/ }
+      sorted_repo_names.select! { |repo_name| repo_name =~ /#{@repo_filter}/ }
       @logger.info "-- after filtering: #{sorted_repo_names.size} repos (org total: #{org_repos.size})"
     end
 
@@ -82,14 +82,13 @@ class TravisCIOrgEnvSetter
   end
 
   def set_env_var(env_var_name, env_var_value, env_var_public)
-    result = ''
     body = {
       'env_var.name' => env_var_name,
       'env_var.value' => env_var_value,
       'env_var.public' => env_var_public
     }.to_json
 
-    repos=[]
+    repos = []
     each_org_repo do |repo|
       data = travis_http("#{@travis_api}/repo/#{repo['id']}/env_vars")
       env_vars = data['env_vars']
@@ -97,7 +96,7 @@ class TravisCIOrgEnvSetter
 
       existing_env_vars = env_vars.select { |x| x['name'] == env_var_name }
       if existing_env_vars.empty?
-        @logger.info  "  ++ Create env_var '#{env_var_name}'"
+        @logger.info "  ++ Create env_var '#{env_var_name}'"
         if @noop
           @logger.info '  -- NOOP: (skipping action)'
           next
@@ -141,10 +140,10 @@ class TravisCIOrgEnvSetter
   end
 
   def TravisCIOrgEnvSetter.run(options)
-    options['variable']     || raise(ArgumentError,'VARIABLE is required')
+    options['variable'] || raise(ArgumentError, 'VARIABLE is required')
     case options['action']
     when 'set'
-      options['value']      || raise(ArgumentError,'A VALUE is required to set an env var')
+      options['value'] || raise(ArgumentError, 'A VALUE is required to set an env var')
     end
     options['travis_token'] || raise('TRAVIS_TOKEN is not set')
     options['org']          || raise(ArgumentError, 'ORG is required')
@@ -168,7 +167,6 @@ class TravisCIOrgEnvSetter
     when 'delete'
       travis_ci_org.delete_env_var(options['variable'])
     end
-
   end
 end
 
@@ -178,7 +176,7 @@ if __FILE__ == $PROGRAM_NAME
 
   perma_opts = ''
   opt_parser = OptionParser.new do |opts|
-    opts.banner = "== #{File.basename($0)} [options]"
+    opts.banner = "== #{File.basename($PROGRAM_NAME)} [options]"
     opts.separator <<-HELP_MSG.gsub(/^ {4}/, '')
 
       Set a Travis CI environment variable across all of an organization's
@@ -223,7 +221,7 @@ if __FILE__ == $PROGRAM_NAME
   opt_parser.parse!
 
   options['org'] ||=  ARGV.shift
-  options['variable'] ||=  ARGV.shift
+  options['variable'] ||= ARGV.shift
   case options['action']
   when 'set'
     options['value'] ||= ARGV.shift
@@ -233,7 +231,7 @@ if __FILE__ == $PROGRAM_NAME
   begin
     TravisCIOrgEnvSetter.run(options)
   rescue ArgumentError => e
-    warn '', '-'*80, "ERROR: #{e}", '-'*80, ''
+    warn '', '-' * 80, "ERROR: #{e}", '-' * 80, ''
     warn 'options:', options.to_yaml
     warn perma_opts
     exit 1
