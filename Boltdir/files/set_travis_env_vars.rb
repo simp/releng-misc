@@ -118,6 +118,16 @@ class TravisCIOrgEnvSetter
     @logger.info "  ==== REPOS: (#{repos.size})"
   end
 
+  def list_env_vars
+    results = {}
+    each_org_repo do |repo|
+      data = travis_http("#{@travis_api}/repo/#{repo['id']}/env_vars")
+      env_vars = data['env_vars']
+      results[repo['name']] = Hash[env_vars.map{|x| [x['name'],x['value']]}]
+    end
+    results
+  end
+
   def delete_env_var(env_var_name)
     each_org_repo do |repo|
       data = travis_http("#{@travis_api}/repo/#{repo['id']}/env_vars")
@@ -140,10 +150,12 @@ class TravisCIOrgEnvSetter
   end
 
   def TravisCIOrgEnvSetter.run(options)
-    options['variable'] || raise(ArgumentError, 'VARIABLE is required')
     case options['action']
     when 'set'
+      options['variable'] || raise(ArgumentError, 'VARIABLE is required')
       options['value'] || raise(ArgumentError, 'A VALUE is required to set an env var')
+    when 'delete'
+      options['variable'] || raise(ArgumentError, 'VARIABLE is required')
     end
     options['travis_token'] || raise('TRAVIS_TOKEN is not set')
     options['org']          || raise(ArgumentError, 'ORG is required')
@@ -158,6 +170,8 @@ class TravisCIOrgEnvSetter
     )
 
     case options['action']
+    when 'list'
+      travis_ci_org.list_env_vars
     when 'set'
       travis_ci_org.set_env_var(
         options['variable'],
@@ -204,6 +218,9 @@ if __FILE__ == $PROGRAM_NAME
     ) do |arg|
       options['public'] = arg
     end
+    opts.on('--list', 'List env variables from all repos') do
+      options['action'] = 'list'
+    end
     opts.on('--delete', 'Delete env variable from all repos') do
       options['action'] = 'delete'
     end
@@ -229,7 +246,8 @@ if __FILE__ == $PROGRAM_NAME
   options['travis_token'] ||= ENV['TRAVIS_TOKEN']
 
   begin
-    TravisCIOrgEnvSetter.run(options)
+    result = TravisCIOrgEnvSetter.run(options)
+    puts result.to_yaml if options['action'] == 'list'
   rescue ArgumentError => e
     warn '', '-' * 80, "ERROR: #{e}", '-' * 80, ''
     warn 'options:', options.to_yaml

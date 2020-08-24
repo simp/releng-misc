@@ -44,11 +44,14 @@ end
 
 def run_wrapped_script(options)
   begin
-    require File.join(
+    libfile = File.join(
       options['_installdir'],
-      'releng_tasks/files/set_travis_env_vars.rb'
+      'releng/files/set_travis_env_vars.rb'
     )
-    TravisCIOrgEnvSetter.run(options.merge({'noop' => options['_noop']}))
+    files = Dir[File.join(options['_installdir'],'**', '*')]
+    raise "===================\n\nMISSSSSSSING FILE: #{libfile}\n\nFiles:\n#{files.map{|x| "  - #{x}"}.join("\n")}\n\n========================" unless File.exists?(libfile)
+    require libfile
+    results = TravisCIOrgEnvSetter.run(options.merge({'noop' => options['_noop']}))
   rescue StandardError => e
     puts error_hash(
        "An Error (#{e.class}) occurred: ! (#{e.message})",
@@ -61,16 +64,18 @@ def run_wrapped_script(options)
     )
     exit 99
   end
+  results
 end
 
 options = read_structured_input
-run_wrapped_script(options)
+result = run_wrapped_script(options)
 
 
 # Return Structured Output
 output = {
   'options' => options.select { |k,_v| k !~ /\A(_|travis_token|logdest)/ },
   'log' => options['logdest'].string.split("\n"),
+  'result' => result,
 }
 unless options['public']
   if output['options']['value']
