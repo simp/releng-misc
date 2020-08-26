@@ -1,7 +1,7 @@
 {
   "puppet_task_version": 1,
   "supports_noop": true,
-  "description": "Set/Delete variables across many Travis CI repos",
+  "description": "Set/Delete/List variables across many Travis CI repos",
   "parameters": {
     "travis_token": {
       "description": "Travis API token for the target projects",
@@ -14,11 +14,11 @@
     },
     "action": {
       "description": "Whether to set or delete the variable",
-      "type": "Enum[set,delete]"
+      "type": "Enum[set,delete,list]"
     },
     "variable": {
-      "description": "The variable to set or delete",
-      "type": "Pattern[/\\A(?i-mx:[a-z][a-z0-9_]*)\\Z/]"
+      "description": "The variable to set or delete (optional when using action=list)",
+      "type": "Optional[Pattern[/\\A(?i-mx:[a-z][a-z0-9_]*)\\Z/]]"
     },
     "value": {
       "description": "The value to set (required when 'action' is 'set')",
@@ -26,7 +26,7 @@
       "sensitive": true
     },
     "repo_filter": {
-      "description": "Substring to filter repos to affect.",
+      "description": "Substring used to filter repos to affect",
       "type": "Optional[String[1]]"
     },
     "travis_api": {
