@@ -86,12 +86,9 @@ RUN /bin/bash -l -c 'bundle install'
 RUN for x in configs/projects/_shared-*; do echo 'proj.setting(:system_openssl, true)' >> $x; done
 RUN sed -i '/plat\.add_build_repository/d' configs/platforms/*.rb
 RUN /bin/bash -l -c 'VANAGON_USE_MIRRORS=n build -e local agent-runtime-main el-7-x86_64'
+RUN /bin/bash -l -c 'VANAGON_USE_MIRRORS=n build -e local bolt-runtime el-7-x86_64'
 
-
-FROM centos:7 as pxp-agent
-ARG PXP_AGENT_VERSION=latest
-ENV pxp_agent_version $PXP_AGENT_VERSION
-
+FROM centos:7 as bolt
 ENV container docker
 
 COPY --from=ruby /usr/local/bin /usr/local/bin
@@ -116,68 +113,24 @@ RUN yum -y install pl-cmake pl-gcc pl-gettext
 
 COPY --from=puppet-runtime /puppet-runtime/output /tmp/puppet-runtime
 
-RUN git clone https://github.com/puppetlabs/pxp-agent-vanagon.git
+RUN git clone https://github.com/puppetlabs/bolt-vanagon.git
 
-WORKDIR /pxp-agent-vanagon
-RUN if [ "${pxp_agent_version}" == 'latest' ]; then git checkout $(git describe --tags $(git rev-list --tags --max-count=1)); else git checkout "${pxp_agent_version}"; fi
+WORKDIR /bolt-vanagon
+RUN if [ "${PUPPET_VERSION}" == 'latest' ]; then git checkout $(git describe --tags $(git rev-list --tags --max-count=1)); else git checkout "${PUPPET_VERSION}"; fi
 RUN git describe --tags | xargs git checkout
 RUN /bin/bash -l -c 'bundle install'
 #RUN sed -i 's/^[[:space:]]*tests[[:space:]]*$/[]/' configs/components/facter.rb
 
 RUN echo "{\"location\":\"file:///tmp/puppet-runtime\",\"version\":\"`ls /tmp/puppet-runtime/agent-runtime-*main*.json | head -1 | sed -e 's/.*main-\(.*\)\.el-7.*/\1/'`\"}" > configs/components/puppet-runtime.json
+RUN echo "{\"location\":\"file:///tmp/bolt-runtime\",\"version\":\"`ls /tmp/puppet-runtime/bolt-runtime-*.json | head -1 | sed -e 's/.*-\([[:digit:]]\+\)\.el-7.*/\1/'`\"}" > configs/components/pxp-agent.json
 
 RUN sed -i '/plat\.add_build_repository/d' configs/platforms/*.rb
 
 RUN /bin/bash -l -c 'gem install rspec mocha'
 
-RUN /bin/bash -l -c 'VANAGON_USE_MIRRORS=n build -e local pxp-agent el-7-x86_64'
+# Fixed in https://github.com/puppetlabs/bolt-vanagon/commit/bdc14d79837b18a3e8960e888258a1f3ad9a662c
+RUN sed -i 's/metadata_uri =.*/metadata_uri = File.join(runtime_details["location"], %(bolt-runtime-#{runtime_details["version"]}.#{platform.name}.json))/' configs/projects/puppet-bolt.rb
 
-CMD /bin/bash
-
-FROM centos:7 as puppet-agent
-ARG PUPPET_VERSION=latest
-ENV puppet_version $PUPPET_VERSION
-
-ENV container docker
-
-COPY --from=ruby /usr/local/bin /usr/local/bin
-COPY --from=ruby /usr/local/include /usr/local/include
-COPY --from=ruby /usr/local/lib /usr/local/lib
-COPY --from=ruby /usr/local/share /usr/local/share
-
-RUN yum -y groupinstall "Development Tools"
-RUN yum -y install wget openssl openssl-devel which
-RUN yum -y install createrepo
-
-RUN /bin/bash -l -c 'echo "gem: --no-document" | tee -a $HOME/.gemrc'
-
-COPY --from=pl-build-tools /pl-build-tools-vanagon/output /tmp/build-tools
-COPY --from=pxp-agent /pxp-agent-vanagon/output /tmp/pxp-agent
-
-RUN mkdir /tmp/repo
-RUN find /tmp/build-tools -name "*.rpm" -exec cp {} /tmp/repo \;
-RUN /bin/bash -l -c 'cd /tmp/repo && createrepo .'
-RUN echo -e "[pl-local]\nbaseurl=file:///tmp/repo\ngpgcheck=0" > /etc/yum.repos.d/pl-local.repo
-
-RUN yum -y install pl-cmake pl-gcc pl-gettext
-
-COPY --from=puppet-runtime /puppet-runtime/output /tmp/puppet-runtime
-
-RUN git clone https://github.com/puppetlabs/puppet-agent.git
-
-WORKDIR /puppet-agent
-RUN if [ "${puppet_version}" == 'latest' ]; then git checkout $(git describe --tags $(git rev-list --tags --max-count=1)); else git checkout "${puppet_version}"; fi
-RUN git describe --tags | xargs git checkout
-RUN /bin/bash -l -c 'bundle install'
-#RUN sed -i 's/^[[:space:]]*tests[[:space:]]*$/[]/' configs/components/facter.rb
-
-RUN echo "{\"location\":\"file:///tmp/puppet-runtime\",\"version\":\"`ls /tmp/puppet-runtime/agent-runtime-*main*.json | head -1 | sed -e 's/.*main-\(.*\)\.el-7.*/\1/'`\"}" > configs/components/puppet-runtime.json
-RUN echo "{\"location\":\"file:///tmp/pxp-agent\",\"version\":\"`ls /tmp/pxp-agent/pxp-agent-*.json | head -1 | sed -e 's/.*-\([[:digit:]]\+\)\.el-7.*/\1/'`\"}" > configs/components/pxp-agent.json
-
-RUN sed -i '/plat\.add_build_repository/d' configs/platforms/*.rb
-
-RUN /bin/bash -l -c 'gem install rspec mocha'
-
-RUN /bin/bash -l -c 'VANAGON_USE_MIRRORS=n build -e local puppet-agent el-7-x86_64'
+RUN /bin/bash -l -c 'VANAGON_USE_MIRRORS=n build -e local puppet-bolt el-7-x86_64'
 
 CMD /bin/bash
