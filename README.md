@@ -3,7 +3,10 @@
 <!-- vim-markdown-toc GFM -->
 
 * [Overview](#overview)
-* [Bolt tasks](#bolt-tasks)
+* [Setup](#setup)
+  * [Setup Requirements](#setup-requirements)
+  * [Beginning with the releng Bolt project](#beginning-with-the-releng-bolt-project)
+* [Usage](#usage)
 * [Contributing](#contributing)
 
 <!-- vim-markdown-toc -->
@@ -19,16 +22,58 @@ out-of-date.   Don't assume that anything here is suitable to use in
 production without inspecting and testing it first.
 
 
-## Bolt tasks
 
-Some scripts are packaged as [Puppet Bolt] tasks (in the [Boltdir/](Boltdir/)
-directory). For information on the available tasks, run:
+## Setup
+
+### Setup Requirements
+
+* [Puppet Bolt 2.37+][bolt], installed from an [OS package][bolt-install]
+  (don't run from a RubyGem or use rvm)
+*  GitHub + GitLab API auth tokens with sufficient scope
+* Environment variables:
+  * `GITHUB_API_TOKEN`
+  * `GITLAB_API_PRIVATE_TOKEN`
+* The [`octokit`][octokit-rb] & [`gitlab`][gitlab-rb] RubyGems
+
+### Beginning with the releng Bolt project
+
+1. If you are using [rvm], you **must disable it** before running bolt:
+
+   ```sh
+   rvm use system
+   ```
+
+2. Install the RubyGem dependencies using Bolt's `gem` command
+
+   On most platforms:
+
+   ```sh
+   /opt/puppetlabs/bolt/bin/gem install --user-install -g gem.deps.rb
+   ```
+
+   On Windows:
+
+   ```pwsh
+   "C:/Program Files/Puppet Labs/Bolt/bin/gem.bat" install --user-install -g gem.deps.rb
+   ```
+
+3. Install the Puppet modules
+
+   ```sh
+   bolt module install
+   ```
+
+## Usage
+
+This repo contains RELENG-related [Puppet Bolt] orchestration (in the
+[Boltdir/](Boltdir/) directory). For information on the available tasks and
+plans, run:
 
 ```sh
 bolt task show [task_name]
-```
 
-You will need at least Bolt 2.8.0 (possibly higher) to do this.
+bolt plan show [task_name]
+```
 
 
 ## Contributing
@@ -38,3 +83,11 @@ You will need at least Bolt 2.8.0 (possibly higher) to do this.
   is). Don't let polishing things hold you up from contributing!
 
 [bolt]: https://puppet.com/docs/bolt/latest/bolt.html
+[gitlab-rb]: https://rubygems.org/gems/gitlab
+[bolt-install]: https://puppet.com/docs/bolt/latest/bolt_installing.html
+[inventory file]: https://puppet.com/docs/bolt/latest/inventory_file_v2.html
+[inventory reference plugin]: https://puppet.com/docs/bolt/latest/using_plugins.html#reference-plugins
+[`local` transport]: https://puppet.com/docs/bolt/latest/bolt_transports_reference.html#local
+[octokit-rb]: https://github.com/octokit/octokit.rb
+[Puppet Bolt]: https://puppet.com/docs/bolt/latest/bolt.html
+[rvm]: https://rvm.io

@@ -8,7 +8,16 @@ format: rainbow
 # project, so they don't get obscured by the list of irrelevant tasks that are
 # bundled with bolt
 tasks:
-  - releng::set_travis_env_vars
+  - releng::*
 
-modulepath:
-  - ..
+plans:
+  - releng::*
+  - github_inventory::*
+
+modules:
+  - bolterrific/github_inventory
+  - bolterrific/gitlab_inventory
+  - puppetlabs/yaml
+  - nwops/debug
+  - git: 'https://github.com/voxpupuli/puppet-format.git'
+    ref: v0.1.1
