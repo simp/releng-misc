@@ -72,8 +72,17 @@ variables:
   before_script:
     # install rubocop:
     - 'gem install --conservative --minimal-deps rubocop'
-  script:
-    - 'rubocop --fail-level warning --display-only-fail-level-offenses set_travis_env_vars'
+
+.setup_bolt_env: &setup_bolt_env
+  cache:
+    untracked: true
+  before_script:
+    # install bolt:
+    - 'wget https://apt.puppet.com/puppet-tools-release-xenial.deb'
+    - 'sudo dpkg -i puppet-tools-release-xenial.deb'
+    - 'sudo apt-get update'
+    - 'sudo apt-get install puppet-bolt'
+    - 'command -v bolt || if command -v apt-get; then apt-get update; apt-get install -y bolt; fi ||:'
 
 # Testing Environments
 #-----------------------------------------------------------------------
@@ -84,7 +93,6 @@ variables:
   <<: *setup_bundler_env
   script:
     - bash -c 'for json in $(find . -type f -name "*.json"); do echo "== $json" && jq . "$json"; done'
-
 .lint_tests: &lint_tests
   stage: 'validation'
   tags: ['docker']
@@ -99,33 +107,35 @@ variables:
   script:
     - bash -c 'find . -type f -name "*.yaml" -o -name "*.yml" | xargs yaml-lint'
 
-#Travis CI env vars were set, however Travis CI was disabled.
-#.validation_tests: &validation_tests
+.lint_tests: &lint_tests
+  stage: 'validation'
+  tags: ['docker']
+  <<: *setup_bolt_env
+  script:
+    - 'BOLT_DISABLE_ANALYTICS=yes bolt task show | grep releng::'
+
+# Travis CI testing was disabled.
+#-----------------------------------------------------------------------
+#.lint_tests: &lint_tests
 #  stage: 'validation'
 #  tags: ['docker']
-#  env: PROJECT_DIR="set_travis_env_vars"
-#  <<: *rubocop__project_dir
-#
-#.validation-tests: &validation_tests
-#  stage: 'validation'
-#  name: 'Rubocop: octokit-repo-puncher'
-#  env: PROJECT_DIR="octokit-repo-puncher"
 #  <<: *rubocop_project_dir
-#
-#.validation-tests: &validation_tests
-#  stage: 'validation'
-#  name: 'Rubocop: Boltdir'
-#  env: PROJECT_DIR="Boltdir"
-#  <<: *rubocop_project_dir
+#  script:
+#    - 'export PROJECT_DIR="set_travis_env_vars"'
+#    - 'rubocop --fail-level warning --display-only-fail-level-offenses $PROJECT_DIR'
 
 .lint_tests: &lint_tests
   stage: 'validation'
   tags: ['docker']
-  before_script:
-    - 'wget https://apt.puppet.com/puppet-tools-release-xenial.deb'
-    - 'sudo dpkg -i puppet-tools-release-xenial.deb'
-    - 'sudo apt-get update'
-    - 'command -v rpm || if command -v apt-get; then apt-get update; apt-get install -y rpm; fi ||:'
-    - 'sudo apt-get install puppet-bolt'
+  <<: *rubocop_project_dir
   script:
-    - 'BOLT_DISABLE_ANALYTICS=yes bolt task show | grep releng::'
+    - 'export PROJECT_DIR="octokit_repo_puncher"'
+    - 'rubocop --fail-level warning --display-only-fail-level-offenses $PROJECT_DIR'
+
+.lint_tests: &lint_tests
+  stage: 'validation'
+  tags: ['docker']
+  <<: *rubocop_project_dir
+  script:
+    - 'export PROJECT_DIR="Boltdir"'
+    - 'rubocop --fail-level warning --display-only-fail-level-offenses $PROJECT_DIR'
