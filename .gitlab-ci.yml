@@ -56,7 +56,6 @@ variables:
     - 'rm -rf pkg/ || :'
     - 'bundle check || rm -f Gemfile.lock && ("${BUNDLER_INSTALL_CMD[@]}" --local || "${BUNDLER_INSTALL_CMD[@]}" || bundle pristine ||  "${BUNDLER_INSTALL_CMD[@]}") || { echo "PIPELINE: Bundler could not install everything (see log output above)" && exit 99 ; }'
 
-
     # Diagnostic bundler, ruby, and gem checks:
     - 'bundle exec rvm ls || :'
     - 'bundle exec which ruby || :'
@@ -66,10 +65,6 @@ variables:
     # install yaml-lint for the linting phase:
     - 'gem install --conservative --minimal-deps yaml-lint'
 
-.rubocop_project_dir: &rubocop_project_dir
-  cache:
-    untracked: true
-  before_script:
     # install rubocop:
     - 'gem install --conservative --minimal-deps rubocop'
 
@@ -87,27 +82,28 @@ variables:
 # Testing Environments
 #-----------------------------------------------------------------------
 
-.lint_tests: &lint_tests
+json_lint:
   stage: 'validation'
   tags: ['docker']
   <<: *setup_bundler_env
   script:
     - bash -c 'for json in $(find . -type f -name "*.json"); do echo "== $json" && jq . "$json"; done'
-.lint_tests: &lint_tests
+
+shell_lint:
   stage: 'validation'
   tags: ['docker']
   <<: *setup_bundler_env
   script:
     - bash -c 'find . -type f -name "*.sh"  | xargs shellcheck'
 
-.lint_tests: &lint_tests
+yaml_lint:
   stage: 'validation'
   tags: ['docker']
   <<: *setup_bundler_env
   script:
     - bash -c 'find . -type f -name "*.yaml" -o -name "*.yml" | xargs yaml-lint'
 
-.lint_tests: &lint_tests
+bolt_lint:
   stage: 'validation'
   tags: ['docker']
   <<: *setup_bolt_env
@@ -119,23 +115,23 @@ variables:
 #.lint_tests: &lint_tests
 #  stage: 'validation'
 #  tags: ['docker']
-#  <<: *rubocop_project_dir
+#  <<: *setup_bundler_env
 #  script:
 #    - 'export PROJECT_DIR="set_travis_env_vars"'
 #    - 'rubocop --fail-level warning --display-only-fail-level-offenses $PROJECT_DIR'
 
-.lint_tests: &lint_tests
+rubocop_octokit_repo_puncher:
   stage: 'validation'
   tags: ['docker']
-  <<: *rubocop_project_dir
+  <<: *setup_bundler_env
   script:
     - 'export PROJECT_DIR="octokit_repo_puncher"'
     - 'rubocop --fail-level warning --display-only-fail-level-offenses $PROJECT_DIR'
 
-.lint_tests: &lint_tests
+rubocop_bolt:
   stage: 'validation'
   tags: ['docker']
-  <<: *rubocop_project_dir
+  <<: *setup_bundler_env
   script:
     - 'export PROJECT_DIR="Boltdir"'
     - 'rubocop --fail-level warning --display-only-fail-level-offenses $PROJECT_DIR'
