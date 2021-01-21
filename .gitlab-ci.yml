@@ -2,33 +2,8 @@
 stages:
   - 'validation'
 
-variables:
-  PUPPET_VERSION:    'UNDEFINED' # <- Matrixed jobs MUST override this (or fail)
-  BUNDLER_VERSION:   '1.17.1'
-
-  # Force dependencies into a path the gitlab-runner user can write to.
-  # (This avoids some failures on Runners with misconfigured ruby environments.)
-  GEM_HOME:          .vendor/gem_install
-  BUNDLE_CACHE_PATH: .vendor/bundle
-  BUNDLE_PATH:       .vendor/bundle
-  BUNDLE_BIN:        .vendor/gem_install/bin
-  BUNDLE_NO_PRUNE:   'true'
-
-  SIMP_SKIP_NON_SIMPOS_TESTS: 1
-
-# bundler dependencies and caching
-#
-# - Cache bundler gems between pipelines foreach Ruby version
-# - Try to use cached and local resources before downloading dependencies
-# --------------------------------------
 .setup_bundler_env: &setup_bundler_env
-  cache:
-    untracked: true
-    key: "${CI_PROJECT_NAMESPACE}_ruby-${MATRIX_RUBY_VERSION}_bundler"
-    paths:
-      - '.vendor'
   before_script:
-    - 'ruby -e "puts %(\n\n), %q(=)*80, %(\nSIMP-relevant Environment Variables:\n\n#{e=ENV.keys.grep(/^PUPPET|^SIMP|^BEAKER|MATRIX/); pad=e.map{|x| x.size}.max+1; e.map{|v| %(    * #{%(#{v}:).ljust(pad)} #{39.chr + ENV[v] + 39.chr}\n)}.join}\n),  %q(=)*80, %(\n\n)"'
     # Diagnostic ruby & gem information
     - 'which ruby && ruby --version || :'
     - "[[ $- == *i* ]] && echo 'Interactive shell session' || echo 'Non-interactive shell session'"
@@ -37,12 +12,7 @@ variables:
 
     # If RVM is available, make SURE it's using the right Ruby:
     #   * Source rvm (to run in non-login shells)
-    #   * If any $MATRIX_RUBY_VERSION rubies are available, use the latest
-    #   * Otherwise: install & use ${MATRIX_RUBY_VERSION}-head (e.g., latest)
-    #     * ^^ This could be wonky and introduce variations across runners
-    #     * ^^ maybe it should just fail if there is no $MATRIX_RUBY_VERSION installed?
     - "command -v rvm && { if declare -p rvm_path &> /dev/null; then source \"${rvm_path}/scripts/rvm\"; else source \"$HOME/.rvm/scripts/rvm\" || source /etc/profile.d/rvm.sh; fi; }"
-    - "command -v rvm && { LATEST_RVM_RUBY_XY=\"$(rvm ls | grep \"$MATRIX_RUBY_VERSION\" | tail -1 | sed -e 's/^.*\\([0-9]\\+\\.[0-9]\\+\\.[0-9]\\+\\).*$/\\1/g')\"; if [ -z \"$LATEST_RVM_RUBY_XY\" ]; then LATEST_RVM_RUBY_XY=\"${MATRIX_RUBY_VERSION}-head\"; rvm install \"$LATEST_RVM_RUBY\" --no-docs; else echo \"Found RVM Ruby: '${LATEST_RVM_RUBY_XY}'\"; fi; rvm use \"$LATEST_RVM_RUBY_XY\" ;  }"
     - 'ruby --version || :'
     - 'gem list sync || :'
 
