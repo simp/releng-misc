@@ -1,6 +1,9 @@
 ---
 stages:
   - 'validation'
+  
+default:
+  image: ruby:2.6
 
 .setup_bundler_env: &setup_bundler_env
   before_script:
