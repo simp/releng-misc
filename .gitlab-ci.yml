@@ -38,17 +38,6 @@ stages:
     # install rubocop:
     - 'gem install --conservative --minimal-deps rubocop'
 
-.setup_bolt_env: &setup_bolt_env
-  cache:
-    untracked: true
-  before_script:
-    # install bolt:
-    - 'wget https://apt.puppet.com/puppet-tools-release-xenial.deb'
-    - 'sudo dpkg -i puppet-tools-release-xenial.deb'
-    - 'sudo apt-get update'
-    - 'sudo apt-get install puppet-bolt'
-    - 'command -v bolt || if command -v apt-get; then apt-get update; apt-get install -y bolt; fi ||:'
-
 # Testing Environments
 #-----------------------------------------------------------------------
 
@@ -76,8 +65,13 @@ yaml_lint:
 bolt_lint:
   stage: 'validation'
   tags: ['docker']
-  <<: *setup_bolt_env
   script:
+    # install bolt:
+    - 'wget https://apt.puppet.com/puppet-tools-release-xenial.deb'
+    - 'dpkg -i puppet-tools-release-xenial.deb'
+    - 'apt-get update'
+    - 'apt-get install puppet-bolt'
+    - 'command -v bolt || if command -v apt-get; then apt-get update; apt-get install -y bolt; fi ||:'
     - 'BOLT_DISABLE_ANALYTICS=yes bolt task show | grep releng::'
 
 # Travis CI testing was disabled.
