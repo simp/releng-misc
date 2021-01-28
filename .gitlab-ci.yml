@@ -94,6 +94,7 @@ rubocop_octokit_repo_puncher:
     - 'rubocop --version'
     - 'export PROJECT_DIR="octokit_repo_puncher"'
     - 'rubocop --fail-level warning --display-only-fail-level-offenses $PROJECT_DIR'
+  allow_failure: true
 
 rubocop_bolt:
   stage: 'validation'
@@ -104,3 +105,4 @@ rubocop_bolt:
     - 'rubocop --version'
     - 'export PROJECT_DIR="Boltdir"'
     - 'rubocop --fail-level warning --display-only-fail-level-offenses $PROJECT_DIR'
+  allow_failure: true
