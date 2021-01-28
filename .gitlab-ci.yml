@@ -3,7 +3,7 @@ stages:
   - 'validation'
 
 default:
-  image: ruby:2.5
+  image: ruby:2.6
 
 .setup_bundler_env: &setup_bundler_env
   before_script:
@@ -54,6 +54,7 @@ shell_lint:
   script:
     - 'command -v shellcheck || if command -v apt-get; then apt-get update; apt-get install -y shellcheck; fi ||:'
     - bash -c 'find . -type f -name "*.sh"  | xargs shellcheck'
+  allow_failure: true
 
 yaml_lint:
   stage: 'validation'
@@ -71,8 +72,7 @@ bolt_lint:
     - 'command -v bolt || if command -v apt-get; then apt-get update; apt-get install -y puppet-bolt; fi ||:'
     # At least some of gitlab.com's runners appear to clone while umask 000 >:\
     - 'chmod o-w Boltdir'
-    - 'BOLT_DISABLE_ANALYTICS=yes bolt --version'
-    - 'BOLT_DISABLE_ANALYTICS=yes bolt task show --log-level debug || :'
+    - 'BOLT_DISABLE_ANALYTICS=yes bolt --version || :'
     - 'BOLT_DISABLE_ANALYTICS=yes bolt task show | grep releng::'
 
 # Travis CI testing was disabled.
