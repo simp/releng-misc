@@ -1,9 +1,9 @@
 ---
 stages:
   - 'validation'
-  
+
 default:
-  image: ruby:2.6
+  image: ruby:2.5
 
 .setup_bundler_env: &setup_bundler_env
   before_script:
@@ -35,11 +35,6 @@ default:
     - 'bundle show sync || :'
     - 'bundle exec gem list sync || :'
 
-    # install yaml-lint for the linting phase:
-    - 'gem install --conservative --minimal-deps yaml-lint'
-
-    # install rubocop:
-    - 'gem install --conservative --minimal-deps rubocop'
 
 # Testing Environments
 #-----------------------------------------------------------------------
@@ -49,6 +44,7 @@ json_lint:
   tags: ['docker']
   <<: *setup_bundler_env
   script:
+    - 'command -v jq || if command -v apt-get; then apt-get update; apt-get install -y jq; fi ||:'
     - bash -c 'for json in $(find . -type f -name "*.json"); do echo "== $json" && jq . "$json"; done'
 
 shell_lint:
@@ -56,6 +52,7 @@ shell_lint:
   tags: ['docker']
   <<: *setup_bundler_env
   script:
+    - 'command -v shellcheck || if command -v apt-get; then apt-get update; apt-get install -y shellcheck; fi ||:'
     - bash -c 'find . -type f -name "*.sh"  | xargs shellcheck'
 
 yaml_lint:
@@ -63,18 +60,19 @@ yaml_lint:
   tags: ['docker']
   <<: *setup_bundler_env
   script:
+    - 'gem install --conservative --minimal-deps yaml-lint'
     - bash -c 'find . -type f -name "*.yaml" -o -name "*.yml" | xargs yaml-lint'
 
 bolt_lint:
   stage: 'validation'
   tags: ['docker']
   script:
-    # install bolt:
-    - 'wget https://apt.puppet.com/puppet-tools-release-xenial.deb'
-    - 'dpkg -i puppet-tools-release-xenial.deb'
-    - 'apt-get update'
-    - 'apt-get install puppet-bolt'
-    - 'command -v bolt || if command -v apt-get; then apt-get update; apt-get install -y bolt; fi ||:'
+    - 'command -v dpkg && wget https://apt.puppet.com/puppet-tools-release-xenial.deb && dpkg -i puppet-tools-release-xenial.deb'
+    - 'command -v bolt || if command -v apt-get; then apt-get update; apt-get install -y puppet-bolt; fi ||:'
+    # At least some of gitlab.com's runners appear to clone while umask 000 >:\
+    - 'chmod o-w Boltdir'
+    - 'BOLT_DISABLE_ANALYTICS=yes bolt --version'
+    - 'BOLT_DISABLE_ANALYTICS=yes bolt task show --log-level debug || :'
     - 'BOLT_DISABLE_ANALYTICS=yes bolt task show | grep releng::'
 
 # Travis CI testing was disabled.
@@ -92,6 +90,8 @@ rubocop_octokit_repo_puncher:
   tags: ['docker']
   <<: *setup_bundler_env
   script:
+    - 'gem install --conservative --minimal-deps rubocop'
+    - 'rubocop --version'
     - 'export PROJECT_DIR="octokit_repo_puncher"'
     - 'rubocop --fail-level warning --display-only-fail-level-offenses $PROJECT_DIR'
 
@@ -100,5 +100,7 @@ rubocop_bolt:
   tags: ['docker']
   <<: *setup_bundler_env
   script:
+    - 'gem install --conservative --minimal-deps rubocop'
+    - 'rubocop --version'
     - 'export PROJECT_DIR="Boltdir"'
     - 'rubocop --fail-level warning --display-only-fail-level-offenses $PROJECT_DIR'
