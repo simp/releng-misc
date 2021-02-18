@@ -71,9 +71,9 @@ bolt_lint:
     - 'command -v dpkg && wget https://apt.puppet.com/puppet-tools-release-xenial.deb && dpkg -i puppet-tools-release-xenial.deb'
     - 'command -v bolt || if command -v apt-get; then apt-get update; apt-get install -y puppet-bolt; fi ||:'
     # At least some of gitlab.com's runners appear to clone while umask 000 >:\
-    - 'chmod o-w Boltdir'
+    - 'chmod o-w .'
     - 'BOLT_DISABLE_ANALYTICS=yes bolt --version || :'
-    - 'BOLT_DISABLE_ANALYTICS=yes bolt task show | grep releng::'
+    - 'BOLT_DISABLE_ANALYTICS=yes bolt plan show | grep releng::'
 
 # Travis CI testing was disabled.
 #-----------------------------------------------------------------------
@@ -103,6 +103,6 @@ rubocop_bolt:
   script:
     - 'gem install --conservative --minimal-deps rubocop'
     - 'rubocop --version'
-    - 'export PROJECT_DIR="Boltdir"'
+    - 'export PROJECT_DIR="tasks"'
     - 'rubocop --fail-level warning --display-only-fail-level-offenses $PROJECT_DIR'
   allow_failure: true
