@@ -1,6 +1,4 @@
 ---
-version: 2
-
 config:
   transport: local
   local:
@@ -39,8 +37,7 @@ groups:
           var: GITLAB_API_PRIVATE_TOKEN
         #archived_repos: true
         #allow_list:
-        #  - '/^pupmod-simp/'
         #  - 'simp-core'
-        #block_list:
-        #  - '/_/'
+        block_list:
+          - '/gitlab-oss/'
         #visibility: public
