@@ -12,6 +12,17 @@
 #   The Gitlab API token that will status/configure GitLab projects
 #   (needs `read-write-api` scope)
 #
+# @param ignore_list
+#    List of project names to ignore, as Strings or Patterns
+#
+#        Note that it's more efficient (and API-friendly) to do this from the
+#        inventory.yaml, using the gitlab_inventory plugin's `block_list`
+#
+# @param include_list
+#    List of project names to include, as Strings or Patterns.
+#
+#        Note that it's more efficient (and API-friendly) to do this from the
+#        inventory.yaml, using the gitlab_inventory plugin's `allow_list`
 plan releng::gitlab_project_repo_mirror(
   TargetSpec $targets = 'gitlab_projects',
   TargetSpec $gh_targets = 'github_repos',
@@ -19,12 +30,8 @@ plan releng::gitlab_project_repo_mirror(
   Sensitive[String[1]] $github_api_token = Sensitive.new(system::env('GITHUB_API_INTEGRATION_TOKEN')),
   Boolean $noop = false,
   Boolean $force = false,
-  Optional[[Array[Variant[String,Regexp]]]] $ignore_list = [
-    /gitlab-oss/,
-  ],
-  Optional[[Array[Variant[String,Regexp]]]] $include_list = [
-    /simp/,
-  ]
+  Optional[[Array[Variant[String,Regexp]]]] $ignore_list = [ /gitlab-oss/ ],
+  Optional[[Array[Variant[String,Regexp]]]] $include_list = [],
 ){
 
   # Filtered Targets, with the 'gl_project_github_service' fact added

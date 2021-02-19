@@ -1,0 +1,34 @@
+{
+  "puppet_task_version": 1,
+  "supports_noop": false,
+  "description": "Make and de-paginate a GitLab API request",
+  "parameters": {
+    "path": {
+      "description": "Path for the GitLab API endpoint request (not including `gitlab_api_endpoint`)",
+      "type": "String[1]"
+    },
+    "gitlab_api_endpoint": {
+      "description": "URL of GitLab instance's base API endpoint",
+      "type": "String[1]",
+      "default": "https://gitlab.com/api/v4"
+    },
+    "gitlab_api_token": {
+      "description": "Optional GitLab personal OAuth token, which may be useful to avoid the GitLab API's unauthenticated rate limits",
+      "type": "Optional[String[1]]",
+      "sensitive": true
+    },
+    "max_pages": {
+      "description": "Maximum pages to auto-depaginate",
+      "type": "Integer[0]",
+      "default": 1000000
+    },
+    "extra_gem_path": {
+      "description": "Additional GEM_PATH path for ruby gems (to find `gitlab`)",
+      "type": "Optional[String[1]]"
+    }
+  },
+  "files": [
+    "ruby_task_helper/files/task_helper.rb"
+  ]
+}
+

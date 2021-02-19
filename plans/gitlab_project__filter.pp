@@ -13,21 +13,19 @@
 # @param ignore_list
 #    List of project names to ignore, as Strings or Patterns
 #
-#    Note that it's more efficient (and API-friendly) to do this from the
-#    inventory.yaml, using the gitlab_inventory plugin's `block_list` argument.
+#        Note that it's more efficient (and API-friendly) to do this from the
+#        inventory.yaml, using the gitlab_inventory plugin's `block_list`
 #
 # @param include_list
-#    List of project names to include, as Strings or Patterns
+#    List of project names to include, as Strings or Patterns.
 #
-#    Note that it's more efficient (and API-friendly) to do this from the
-#    inventory.yaml, using the gitlab_inventory plugin's `allow_list` argument.
+#        Note that it's more efficient (and API-friendly) to do this from the
+#        inventory.yaml, using the gitlab_inventory plugin's `allow_list`
 #
 # @private true
 plan releng::gitlab_project__filter(
   TargetSpec $targets = 'gitlab_projects',
-  Optional[[Array[Variant[String,Regexp]]]] $ignore_list = [
-    /gitlab-oss/,
-  ],
+  Optional[[Array[Variant[String,Regexp]]]] $ignore_list = [ /gitlab-oss/ ],
   Optional[[Array[Variant[String,Regexp]]]] $include_list = []
 ){
   # Get targets and filter out anything in the ignore/include list

@@ -8,22 +8,22 @@ config:
      var: PWD
 
 groups:
-  - name: github_repos
-    targets:
-      - _plugin: github_inventory
-        org:
-          _plugin: env_var
-          var: GITHUB_ORG
-          default: simp
-        github_api_token:
-          _plugin: env_var
-          var: GITHUB_API_TOKEN
-        #archived_repos: true
-        #allow_list:
-        #  - '/^pupmod-simp/'
-        #  - 'simp-core'
-        #block_list:
-        #  - '/_/'
+  ##  - name: github_repos
+  ##    targets:
+  ##      - _plugin: github_inventory
+  ##        org:
+  ##          _plugin: env_var
+  ##          var: GITHUB_ORG
+  ##          default: simp
+  ##        github_api_token:
+  ##          _plugin: env_var
+  ##          var: GITHUB_API_TOKEN
+  ##        #archived_repos: true
+  ##        #allow_list:
+  ##        #  - '/^pupmod-simp/'
+  ##        #  - 'simp-core'
+  ##        #block_list:
+  ##        #  - '/_/'
 
   - name: gitlab_projects
     targets:
@@ -36,8 +36,9 @@ groups:
           _plugin: env_var
           var: GITLAB_API_PRIVATE_TOKEN
         #archived_repos: true
-        #allow_list:
-        #  - 'simp-core'
+###        allow_list:
+###            - '/^pupmod-simp-[abcdefg]/'
+###            - '/^rubygem-simp-test/'
         block_list:
           - '/gitlab-oss/'
         #visibility: public
