@@ -3,15 +3,20 @@
 <!-- vim-markdown-toc GFM -->
 
 * [Overview](#overview)
-* [Setup](#setup)
-  * [Setup Requirements](#setup-requirements)
-  * [Beginning with the releng:: Bolt project](#beginning-with-the-releng-bolt-project)
-* [Usage](#usage)
+* [Bolt Project](#bolt-project)
+  * [Setup](#setup)
+    * [What the `releng::` project affects](#what-the-releng-project-affects)
+      * [For Github Organizations](#for-github-organizations)
+      * [For GitLab Groups](#for-gitlab-groups)
+    * [Setup Requirements](#setup-requirements)
+    * [Beginning with the releng:: Bolt project](#beginning-with-the-releng-bolt-project)
+  * [Usage](#usage)
+    * [](#)
 * [Contributing](#contributing)
 
 <!-- vim-markdown-toc -->
 
-## Overview
+# Overview
 
 This project collects the various tools (script, config, notes, etc.) we've
 been using to assist with RELENG-related activities. The purpose is to
@@ -23,7 +28,33 @@ out of date.  Don't assume that anything here is suitable to use in
 production without inspecting and testing it first.
 
 
+# Bolt Project
+
+This repository includes the `releng::` [Bolt] project, including plans to
+help us inspect and administer our GitHub organization and GitLab group.
+
 ## Setup
+
+### What the `releng::` project affects
+
+
+#### For Github Organizations
+
+* Clone all repos into a single directory (**`github_inventory::clone_git_repos`**)
+* Report the highest SemVer tag in each repo (**`github_inventory::latest_semver_tags`**)
+* List and/or set which PR checks are required on each repo
+  (**`github_inventory::required_checks`**)
+* Report which 
+
+
+#### For GitLab Groups
+
+* Mirror all projects from their corresponding GitHub repo,
+  using a dedicated API token/account.
+  (**`releng::gitlab_project_repo_mirror`**)
+* Identify/erase all Gitlab CI job logs between two dates
+  (**`releng::gitlab_project_ci_logs`**)
+
 
 ### Setup Requirements
 
@@ -44,7 +75,7 @@ production without inspecting and testing it first.
    rvm use system
    ```
 
-2. Install the RubyGem dependencies using Bolt's `gem` command
+2. Install the RubyGem dependencies using Bolt's `gem` command:
 
    On most platforms:
 
@@ -58,7 +89,7 @@ production without inspecting and testing it first.
    "C:/Program Files/Puppet Labs/Bolt/bin/gem.bat" install --user-install -g gem.deps.rb
    ```
 
-3. Install the Puppet modules
+3. Install the Puppet modules:
 
    ```sh
    bolt module install
@@ -77,7 +108,9 @@ bolt task show [task_name]
 
 ```
 
-## Contributing
+### 
+
+# Contributing
 
 * If you'd like to contribute something that you've been using, drop it in a
   new folder (preferably with a small `README.md` to let others know what it
