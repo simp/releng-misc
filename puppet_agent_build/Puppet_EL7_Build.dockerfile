@@ -51,7 +51,7 @@ RUN git clone https://github.com/puppetlabs/pl-build-tools-vanagon.git
 WORKDIR /pl-build-tools-vanagon
 RUN /bin/bash -l -c 'bundle install'
 RUN sed -i '/proj\.component.\+openssl-.*/d' configs/platforms/*.rb
-RUN sed -i '0,/[[:space:]]\+proj\.component/s/proj\.component/proj.setting(:system_openssl, true)\n&/' configs/projects/*.rb
+RUN sed -i '0,/^\([[:space:]]*\)\+proj\.component/s//\1proj.setting(:system_openssl, true)\n&/' configs/projects/*.rb
 RUN sed -i '/plat\.add_build_repository/d' configs/platforms/*.rb
 RUN /bin/bash -l -c 'VANAGON_USE_MIRRORS=n build -e local pl-gcc el-7-x86_64'
 RUN /bin/bash -l -c 'VANAGON_USE_MIRRORS=n build -e local pl-cmake el-7-x86_64'
@@ -88,7 +88,8 @@ RUN git clone https://github.com/puppetlabs/puppet-runtime.git
 WORKDIR /puppet-runtime
 RUN git describe --tags | xargs git checkout
 RUN /bin/bash -l -c 'bundle install'
-RUN sed -i '0,/[[:space:]]\+proj\.component/s/proj\.component/proj.setting(:system_openssl, true)\n&/' configs/projects/*.rb
+RUN sed -i '0,/^\([[:space:]]*\)\+proj\.component/s//\1proj.setting(:system_openssl, true)\n&/' configs/projects/*.rb
+
 RUN sed -i '/proj\.component.\+openssl-.*/d' configs/{projects,platforms}/*.rb
 RUN sed -i '/plat\.add_build_repository/d' configs/platforms/*.rb
 RUN /bin/bash -l -c 'VANAGON_USE_MIRRORS=n build -e local agent-runtime-main el-7-x86_64'
@@ -117,7 +118,7 @@ RUN /bin/bash -l -c 'bundle install'
 RUN echo "{\"location\":\"file:///tmp/puppet-runtime\",\"version\":\"`ls /tmp/puppet-runtime/agent-runtime-*main*.json | head -1 | sed -e 's/.*main-\(.*\)\.el-7.*/\1/'`\"}" > configs/components/puppet-runtime.json
 
 RUN sed -i '/proj\.component.\+openssl-.*/d' configs/platforms/*.rb
-RUN sed -i '0,/[[:space:]]\+proj\.component/s/proj\.component/proj.setting(:system_openssl, true)\n&/' configs/projects/*.rb
+RUN sed -i '0,/^\([[:space:]]*\)\+proj\.component/s//\1proj.setting(:system_openssl, true)\n&/' configs/projects/*.rb
 RUN sed -i '/plat\.add_build_repository/d' configs/platforms/*.rb
 
 RUN /bin/bash -l -c 'gem install rspec mocha'
@@ -146,7 +147,7 @@ RUN echo "{\"location\":\"file:///tmp/puppet-runtime\",\"version\":\"`ls /tmp/pu
 RUN echo "{\"location\":\"file:///tmp/pxp-agent\",\"version\":\"`ls /tmp/pxp-agent/pxp-agent-*.json | head -1 | sed -e 's/.*-\([[:digit:]]\+\)\.el-7.*/\1/'`\"}" > configs/components/pxp-agent.json
 
 RUN sed -i '/proj\.component.\+openssl-.*/d' configs/platforms/*.rb
-RUN sed -i '0,/[[:space:]]\+proj\.component/s/proj\.component/proj.setting(:system_openssl, true)\n&/' configs/projects/*.rb
+RUN sed -i '0,/^\([[:space:]]*\)\+proj\.component/s//\1proj.setting(:system_openssl, true)\n&/' configs/projects/*.rb
 RUN sed -i '/plat\.add_build_repository/d' configs/platforms/*.rb
 
 RUN /bin/bash -l -c 'gem install rspec mocha'
@@ -170,7 +171,7 @@ RUN echo "{\"location\":\"file:///tmp/puppet-runtime\",\"version\":\"`ls /tmp/pu
 RUN echo "{\"location\":\"file:///tmp/bolt-runtime\",\"version\":\"`ls /tmp/puppet-runtime/bolt-runtime-*.json | head -1 | sed -e 's/.*-\([[:digit:]]\+\)\.el-7.*/\1/'`\"}" > configs/components/pxp-agent.json
 
 RUN sed -i '/proj\.component.\+openssl-.*/d' configs/platforms/*.rb
-RUN sed -i '0,/[[:space:]]\+proj\.component/s/proj\.component/proj.setting(:system_openssl, true)\n&/' configs/projects/*.rb
+RUN sed -i '0,/^\([[:space:]]*\)\+proj\.component/s//\1proj.setting(:system_openssl, true)\n&/' configs/projects/*.rb
 RUN sed -i '/plat\.add_build_repository/d' configs/platforms/*.rb
 
 RUN /bin/bash -l -c 'gem install rspec mocha'
