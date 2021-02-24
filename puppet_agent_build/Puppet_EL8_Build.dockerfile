@@ -48,7 +48,8 @@ RUN git clone https://github.com/puppetlabs/puppet-runtime.git
 WORKDIR /puppet-runtime
 RUN git describe --tags | xargs git checkout
 RUN /bin/bash -l -c 'bundle install'
-RUN for x in configs/projects/_shared-*; do echo 'proj.setting(:system_openssl, true)' >> $x; done
+RUN sed -i '0,/^\([[:space:]]*\)\+proj\.component/s//\1proj.setting(:system_openssl, true)\n&/' configs/projects/*.rb
+RUN sed -i '/proj\.component.\+openssl-.*/d' configs/{projects,platforms}/*.rb
 RUN sed -i '/plat\.add_build_repository/d' configs/platforms/*.rb
 RUN /bin/bash -l -c 'VANAGON_USE_MIRRORS=n build -e local agent-runtime-main el-8-x86_64'
 
@@ -83,6 +84,7 @@ RUN /bin/bash -l -c 'bundle install'
 
 RUN echo "{\"location\":\"file:///tmp/puppet-runtime\",\"version\":\"`ls /tmp/puppet-runtime/agent-runtime-*main*.json | head -1 | sed -e 's/.*main-\(.*\)\.el-8.*/\1/'`\"}" > configs/components/puppet-runtime.json
 
+RUN sed -i '0,/^\([[:space:]]*\)\+proj\.component/s//\1proj.setting(:system_openssl, true)\n&/' configs/projects/*.rb
 RUN sed -i '/plat\.add_build_repository/d' configs/platforms/*.rb
 
 RUN /bin/bash -l -c 'gem install rspec mocha'
@@ -122,6 +124,7 @@ RUN /bin/bash -l -c 'bundle install'
 RUN echo "{\"location\":\"file:///tmp/puppet-runtime\",\"version\":\"`ls /tmp/puppet-runtime/agent-runtime-*main*.json | head -1 | sed -e 's/.*main-\(.*\)\.el-8.*/\1/'`\"}" > configs/components/puppet-runtime.json
 RUN echo "{\"location\":\"file:///tmp/pxp-agent\",\"version\":\"`ls /tmp/pxp-agent/pxp-agent-*.json | head -1 | sed -e 's/.*-\([[:digit:]]\+\)\.el-8.*/\1/'`\"}" > configs/components/pxp-agent.json
 
+RUN sed -i '0,/^\([[:space:]]*\)\+proj\.component/s//\1proj.setting(:system_openssl, true)\n&/' configs/projects/*.rb
 RUN sed -i '/plat\.add_build_repository/d' configs/platforms/*.rb
 
 RUN /bin/bash -l -c 'gem install rspec mocha'
