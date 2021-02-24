@@ -44,7 +44,7 @@ help us inspect and administer our GitHub organization and GitLab group.
 * Report the highest SemVer tag in each repo (**`github_inventory::latest_semver_tags`**)
 * List and/or set which PR checks are required on each repo
   (**`github_inventory::required_checks`**)
-* Report which 
+* Report repos with GitHub Actions workflows (**`github_inventory::workflows`**)
 
 
 #### For GitLab Groups
@@ -93,6 +93,15 @@ help us inspect and administer our GitHub organization and GitLab group.
 
    ```sh
    bolt module install
+   ```
+   
+4. Set the environment variables **`GITHUB_API_TOKEN`** and 
+   **`GITLAB_API_PRIVATE_TOKEN`**, as required.
+
+5. Verify that you can see the project's Bolt plans:
+
+   ```sh
+   bolt plan show
    ```
 
 ## Usage
