@@ -3,7 +3,8 @@ name: releng
 save-rerun: false
 format: rainbow
 
-# A list of task names to show in bolt task show output, if they exist
+# A list of task names to show in `bolt task show` output (if they exist).
+#
 # This option is used to limit the visibility of tasks for users of the
 # project, so they don't get obscured by the list of irrelevant tasks that are
 # bundled with bolt
@@ -13,6 +14,7 @@ tasks:
 plans:
   - releng::*
   - github_inventory::*
+  - gitlab_inventory::*
 
 modules:
   - bolterrific/github_inventory
