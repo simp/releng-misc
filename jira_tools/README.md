@@ -37,5 +37,14 @@ Usage: create_tickets [options]
 
 -f input file (should be a comma-separated file containing the fields:
 
+  * ticket id (generated for the table to associate parents and children)
+    note that a sub-ticket has parent.number
+  * summary (short ticket summary)
+  * description (longer ticket description)
+  * component (component name)
+  * blocker (if a previous ticket blocks it, put its ticket id here)
+  * points (story points)
+  
+
 
 -s sprint number assigned by Jira (you may need to look it up, usually by hovering over a report option)
