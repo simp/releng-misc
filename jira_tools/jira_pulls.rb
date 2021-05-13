@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'rest-client'
 require 'json'
 require 'fileutils'
@@ -6,41 +8,40 @@ require 'optparse'
 days = 0
 sprintno = ''
 outputdir = ''
-pullfile='test.csv'
+pullfile = 'test.csv'
 optsparse = OptionParser.new do |opts|
-  opts.banner = "Usage: jira_pull [options] (default will pull only the current sprint)"
+  opts.banner = 'Usage: jira_pull [options] (default will pull only the current sprint)'
   opts.on('-h', '--help', 'Help') do
     puts opts
     exit
   end
-  opts.on('-s', '--sprint NUMBER', 'Sprint') do
-    |s| puts "sprint is #{s}"
+  opts.on('-s', '--sprint NUMBER', 'Sprint') do |s|
+    puts "sprint is #{s}"
     sprintno = s.strip
   end
-  opts.on('-d', '--closed since days', 'number of days (channges to closed query)') do
-    |d| puts "sprint is #{d}"
+  opts.on('-d', '--closed since days', 'number of days (channges to closed query)') do |d|
+    puts "sprint is #{d}"
     days = d.strip
     pullfile = "tix_closed_#{days}.csv"
   end
-  opts.on('-o', '--output DIR', 'Output Dir (full path)') do
-    |o| puts "outdir is #{o}"
+  opts.on('-o', '--output DIR', 'Output Dir (full path)') do |o|
+    puts "outdir is #{o}"
     outputdir = o.strip
   end
 end
 optsparse.parse!
 
 # here is our jira instance
-project_key = 'ABC'
 jira_url = 'https://simp-project.atlassian.net/rest/api/2/search?'
 
 # create query
-if sprintno != ''
-  filter = "jql=sprint=#{sprintno}"
-elsif days != 0
-  filter = "jql=resolved%3e%2d#{days}d%20and%20status=closed"
-else
-  filter = 'jql=sprint%20in%20openSprints()'
-end
+filter = if sprintno != ''
+           "jql=sprint=#{sprintno}"
+         elsif days != 0
+           "jql=resolved%3e%2d#{days}d%20and%20status=closed"
+         else
+           'jql=sprint%20in%20openSprints()'
+         end
 
 puts "query is #{filter}"
 
@@ -78,7 +79,7 @@ while ticket_count < total_issues
       temp = desc.tr('"', "\'")
       desc = temp
     end
-#    puts "issue is #{issue['id']} key is #{issue['key']}" 
+    #    puts "issue is #{issue['id']} key is #{issue['key']}"
 
     # see if it has a parent, and if so, display it"
     parent = if !issue['fields']['parent'].nil?
@@ -92,7 +93,7 @@ while ticket_count < total_issues
 
     # calculate the sprint by breaking the "sprint=" out of the sprint attributes string
     sprintdata = issue['fields']['customfield_10007']
-    if sprintdata != nil
+    if !sprintdata.nil?
       idstring = sprintdata[0]
       sprintid = idstring['name']
     else
@@ -114,7 +115,7 @@ while ticket_count < total_issues
                end
 
     # get fixver
-    if (issue['fields']['fixVersions'].length > 0) then
+    if issue['fields']['fixVersions'].length.positive?
       fixverstring = issue['fields']['fixVersions'][0]
       fixver = fixverstring['name']
     else
@@ -122,32 +123,32 @@ while ticket_count < total_issues
     end
 
     # get component
-    if (issue['fields']['components'].length > 0) then
+    if issue['fields']['components'].length.positive?
       components = issue['fields']['components'][0]
       component = components['name']
     else
       component = ''
     end
     # puts "component is #{component}"
- 
+
     # if this is the first output, then open the file with the sprintname and write the header
-    if (ticket_count == 0) then
+    if ticket_count.zero?
       # first create two .csv files - one with the parent appended, the other without - ensure the field names are OK
-      filesprint = sprintid.gsub(" ","_")
-      filesprint = filesprint.gsub("__","_")
+      filesprint = sprintid.gsub(' ', '_')
+      filesprint = filesprint.gsub('__', '_')
       puts " old #{pullfile}"
-      if pullfile == 'test.csv'
-        pullfile =  "currentpull#{filesprint}.csv"
-      end
+      pullfile = "currentpull#{filesprint}.csv" if pullfile == 'test.csv'
       puts " new #{pullfile}"
       $parentpullfile = File.open(pullfile, 'w')
-      $parentpullfile.puts('Issue id,Parent id,Summary,Issue Type,Story Points,Sprint,Description,Assignee,Fix Version, Component, Status')
+      $parentpullfile.puts('Issue id,Parent id,Summary,Issue Type,Story Points,' \
+                            'Sprint,Description,Assignee,Fix Version, Component, Status')
     end
     # write to files
-    $parentpullfile.puts("#{issuekey},#{parent},\"#{parent}/#{summary} (#{issuekey})\",#{issuetype},#{points},#{sprintid},\"#{desc}\",#{assignee},#{fixver},#{component},#{status}")
-    ticket_count = ticket_count + 1
-
-  end # while there are still tickets
+    $parentpullfile.puts("#{issuekey},#{parent},\"#{parent}/#{summary} (#{issuekey})\",#{issuetype},#{points}," \
+                        "#{sprintid},\"#{desc}\",#{assignee},#{fixver},#{component},#{status}")
+    ticket_count += 1
+  end
+  # while there are still tickets
   puts "ticket count is #{ticket_count}"
 end
 
@@ -155,5 +156,5 @@ end
 # now that we are done, send the output file to the proper output directory
 if outputdir != ''
   finalpullfile = "#{outputdir}#{pullfile}"
-  FileUtils.cp(pullfile,finalpullfile)
+  FileUtils.cp(pullfile, finalpullfile)
 end
