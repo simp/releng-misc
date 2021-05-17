@@ -57,7 +57,9 @@ NOTES:
 
 This script creates a batch of Jira tickets
 
-* Input: a CSV file, based on one of the tables from https://simp-project.atlassian.net/wiki/spaces/SD/pages/1920008207/Test+Plan+SIMP+6.6.0
+* Input: a CSV file, based on one of the tables from https://simp-project.atlassian.net/wiki/spaces/SD/pages/1920008207/Test+Plan+SIMP+6.6.0 
+(Note: The most effective way to create this table is to select the table, copy it to google sheets [this seems to maintain the cells' integrity] and then file/download/CSV)
+
 
 ```console
 $ bundle exec ruby create_tix_from_confluence.rb -h
@@ -81,4 +83,5 @@ $ bundle exec ruby create_tix_from_confluence.rb -h
 
 -p Jira project (`JJTEST` by default, use `SIMP` when ready to go live)
 ```
+* Output: To ensure the run was successful, check the allresults.json
 
