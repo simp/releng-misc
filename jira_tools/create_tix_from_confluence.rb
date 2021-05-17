@@ -1,15 +1,15 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
 
-#####################################################
+################################################################################
 #
 # create_tix
 # reads in a csv file
 # creates a series of jira tickets based on column entries
 # -f input file
-# -s sprint number
+# -p project (defaults to 'JJTEST', use `-p SIMP` when ready to do it live)
 #
-#####################################################
+################################################################################
 
 require 'csv'
 require 'rest-client'
@@ -38,28 +38,28 @@ end
 inputfile = 'test.csv'
 outputfile = 'test_tickets.csv'
 lines = 0
-userid = 'me@here.com:123456789012'
+userid = ENV['JIRA_API_TOKEN'] or fail( "Env var JIRA_API_TOKEN not set!  (ex: 'me@here.com:123456789012')" )
 resultfile = 'putresult.json'
 allresultsfile = 'allresults.json'
-sprint = nil
 
 @tickets = Array.new { {} }
 
 # initialize the OSes in an array
 os_type = ['', '', '', '', '', '', 'EL7', 'EL8', 'OEL7', 'OEL8', 'RHEL7', 'RHEL8']
+jira_proj = 'JJTEST'
 
-# get the filename and sprint if input by the user
+# get the filename and project if input by the user
 optsparse = OptionParser.new do |opts|
   opts.banner = 'Usage: create_tickets [options]'
+  opts.on('-f', '--input FILE', 'Input CSV file or directory of CSV files') do |f|
+    inputfile = f.strip
+  end
+  opts.on('-p', '--project PROJECT', "Jira Project to create tickets (#{jira_proj})") do |s|
+    jira_proj = s.strip
+  end
   opts.on('-h', '--help', 'Help') do
     puts opts
     exit
-  end
-  opts.on('-f', '--input NAME', 'Input file or directory name') do |f|
-    inputfile = f.strip
-  end
-  opts.on('-s', '--sprint NUMBER', 'Input sprint number (Jira)') do |s|
-    sprint = s.strip
   end
 end
 optsparse.parse!
@@ -74,9 +74,6 @@ cmdfile = File.open('commands.txt', 'w')
 # set up input file
 # CSV.foreach(inputfile, 'r:bom|utf-9') do |col|
 CSV.foreach(inputfile) do |col|
-  # initialize
-  # proj = 'SIMP'
-  proj = 'JJTEST'
   type = 'Story'
   points = 0
 
@@ -174,7 +171,7 @@ CSV.foreach(inputfile) do |col|
        #    puts "component=#{component}, summary=#{summ_os}, desc=#{mydesc}, points=#{points}, type=#{type}"
 
        # set up output line
-       json_line = "{\"fields\":{\"project\":{\"key\":\"#{proj}\"}"
+       json_line = "{\"fields\":{\"project\":{\"key\":\"#{jira_proj}\"}"
        json_line += ",\"issuetype\":{\"name\":\"#{type}\"}"
        json_line += ",\"customfield_10005\":#{points}"
        json_line += ",\"summary\":\"#{summ_os}\""
@@ -195,7 +192,7 @@ CSV.foreach(inputfile) do |col|
        json_line += '}}'
 
        # here is our jira instance
-       jira_id = "NOT#{proj}-#{ticket_id}"
+       jira_id = "NOT#{jira_proj}-#{ticket_id}"
        page_url = 'https://simp-project.atlassian.net/rest/api/3/issue'
        options = " --user #{userid} --header 'Accept: application/json' --header 'Content-type: application/json'"
        data_fields = "--data '#{json_line}'"
@@ -243,8 +240,8 @@ CSV.foreach(inputfile) do |col|
                     "#{parentid},#{jira_id},")
      end
   rescue StandardError => e
-    puts("#{e.message} error on record with id #{ticket_id} - skipping")
-   end
+     puts("#{e.message} error on record with id #{ticket_id} - skipping")
+  end
 end
 puts 'final tickets'
 @tickets.each do |tic|
