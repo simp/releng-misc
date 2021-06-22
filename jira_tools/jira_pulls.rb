@@ -1,160 +1,175 @@
+#! /usr/bin/env ruby
+
 # frozen_string_literal: true
 
 require 'rest-client'
 require 'json'
 require 'fileutils'
 require 'optparse'
+require 'logger'
 
-days = 0
-sprintno = ''
-outputdir = ''
-pullfile = 'test.csv'
-optsparse = OptionParser.new do |opts|
+logger = Logger.new($stdout)
+logger.level = Logger::INFO
+logger.formatter = proc do |severity, _datetime, _progname, msg|
+  "#{severity}: #{msg}\n"
+end
+
+days = nil
+sprint_number = nil
+output_dir = 'jira_pulls_output'
+output_filename = nil
+
+OptionParser.new do |opts|
   opts.banner = 'Usage: jira_pull [options] (default will pull only the current sprint)'
   opts.on('-h', '--help', 'Help') do
     puts opts
     exit
   end
   opts.on('-s', '--sprint NUMBER', 'Sprint') do |s|
-    puts "sprint is #{s}"
-    sprintno = s.strip
+    sprint_number = s.strip
   end
-  opts.on('-d', '--closed since days', 'number of days (channges to closed query)') do |d|
-    puts "sprint is #{d}"
+  opts.on('-d', '--closed since days', 'number of days (changes to closed query)') do |d|
     days = d.strip
-    pullfile = "tix_closed_#{days}.csv"
+    output_filename = "tix_closed_#{days}.csv"
   end
   opts.on('-o', '--output DIR', 'Output Dir (full path)') do |o|
     puts "outdir is #{o}"
-    outputdir = o.strip
+    output_dir = o.strip
   end
-end
-optsparse.parse!
+  opts.on('--debug') do
+    logger.level = Logger::DEBUG
+  end
+end.parse!
+
+FileUtils.mkdir_p(output_dir) unless File.directory?(output_dir)
 
 # here is our jira instance
 jira_url = 'https://simp-project.atlassian.net/rest/api/2/search?'
 
 # create query
-filter = if sprintno != ''
-           "jql=sprint=#{sprintno}"
-         elsif days != 0
-           "jql=resolved%3e%2d#{days}d%20and%20status=closed"
-         else
-           'jql=sprint%20in%20openSprints()'
-         end
-
-puts "query is #{filter}"
-
-# set a max # results - defaults to 50 (we can switch this to a loop later)
-total_issues = 1
-ticket_count = 0
-maxresults = 50
-
-# while we have tickets still
-while ticket_count < total_issues
-
-  # call the code
-  newfilter = "#{filter}&maxResults=#{maxresults}&startAt=#{ticket_count}"
-  response = RestClient.get(jira_url + newfilter)
-  raise 'Error with the http request!' if response.code != 200
-
-  data = JSON.parse(response.body)
-  # puts "current data is #{data}"
-  # find the number of tickets returned
-  total_issues = data['total']
-
-  data['issues'].each do |issue|
-    points = issue['fields']['customfield_10005']
-    points = points.to_i
-    issuekey = issue['key']
-    summary = issue['fields']['summary']
-    # substitute apostrophe for quote
-    unless summary.nil?
-      temp = summary.tr('"', "\'")
-      summary = temp
-    end
-    desc = issue['fields']['description']
-    # substitute apostrophe for quote
-    unless desc.nil?
-      temp = desc.tr('"', "\'")
-      desc = temp
-    end
-    #    puts "issue is #{issue['id']} key is #{issue['key']}"
-
-    # see if it has a parent, and if so, display it"
-    parent = if !issue['fields']['parent'].nil?
-               issue['fields']['parent']['key']
-             else
-               "#{issuekey}."
-             end
-    # what is the status?
-    status = issue['fields']['status']['name']
-    # puts "status is #{status}"
-
-    # calculate the sprint by breaking the "sprint=" out of the sprint attributes string
-    sprintdata = issue['fields']['customfield_10007']
-    if !sprintdata.nil?
-      idstring = sprintdata[0]
-      sprintid = idstring['name']
-    else
-      sprintid = ''
-    end
-
-    # get type
-    issuetype = if !issue['fields']['issuetype'].nil?
-                  issue['fields']['issuetype']['name']
-                else
-                  ''
-                end
-
-    # get assignee
-    assignee = if !issue['fields']['assignee'].nil?
-                 issue['fields']['assignee']['name']
-               else
-                 ''
-               end
-
-    # get fixver
-    if issue['fields']['fixVersions'].length.positive?
-      fixverstring = issue['fields']['fixVersions'][0]
-      fixver = fixverstring['name']
-    else
-      fixver = ''
-    end
-
-    # get component
-    if issue['fields']['components'].length.positive?
-      components = issue['fields']['components'][0]
-      component = components['name']
-    else
-      component = ''
-    end
-    # puts "component is #{component}"
-
-    # if this is the first output, then open the file with the sprintname and write the header
-    if ticket_count.zero?
-      # first create two .csv files - one with the parent appended, the other without - ensure the field names are OK
-      filesprint = sprintid.gsub(' ', '_')
-      filesprint = filesprint.gsub('__', '_')
-      puts " old #{pullfile}"
-      pullfile = "currentpull#{filesprint}.csv" if pullfile == 'test.csv'
-      puts " new #{pullfile}"
-      $parentpullfile = File.open(pullfile, 'w')
-      $parentpullfile.puts('Issue id,Parent id,Summary,Issue Type,Story Points,' \
-                            'Sprint,Description,Assignee,Fix Version, Component, Status')
-    end
-    # write to files
-    $parentpullfile.puts("#{issuekey},#{parent},\"#{parent}/#{summary} (#{issuekey})\",#{issuetype},#{points}," \
-                        "#{sprintid},\"#{desc}\",#{assignee},#{fixver},#{component},#{status}")
-    ticket_count += 1
-  end
-  # while there are still tickets
-  puts "ticket count is #{ticket_count}"
+if sprint_number
+  filter = "jql=sprint=#{sprint_number}"
+  output_filename = "Sprint_#{sprint_number}.csv"
+elsif days
+  filter = "jql=resolved%3e%2d#{days}d%20and%20status=closed"
+  output_filename = %(Past_#{days}_Days_#{Time.now.strftime('%Y-%m-%d')}.csv)
+else
+  filter = 'jql=sprint%20in%20openSprints()'
+  output_filename = nil
 end
 
-# if there was a new directory, copy the file over
-# now that we are done, send the output file to the proper output directory
-if outputdir != ''
-  finalpullfile = "#{outputdir}#{pullfile}"
-  FileUtils.cp(pullfile, finalpullfile)
+logger.info("Query is #{filter}")
+
+Dir.chdir(output_dir) do
+  total_tickets = 1
+  ticket_count = 0
+  maxresults = 50
+
+  output_header = [
+    [
+      'Issue id',
+      'Parent id',
+      'Summary',
+      'Issue Type',
+      'Story Points',
+      'Sprint',
+      'Description',
+      'Assignee',
+      'Fix Version',
+      'Component',
+      'Status'
+    ]
+  ]
+
+  output_rows = []
+
+  sprint_id = nil
+
+  # while we have tickets still
+  while ticket_count < total_tickets
+
+    # call the code
+    new_filter = "#{filter}&maxResults=#{maxresults}&startAt=#{ticket_count}"
+    response = RestClient.get(jira_url + new_filter)
+
+    unless response.code == 200
+      logger.error("Error with HTTP request: #{response}")
+      exit 1
+    end
+
+    data = JSON.parse(response.body)
+
+    # find the number of tickets returned
+    total_tickets = data['total']
+
+    if total_tickets.to_i.positive?
+      logger.debug("Processing #{total_tickets} issues")
+    else
+      logger.error('Did not find any issues to process, exiting')
+      exit 1
+    end
+
+    data['issues'].each do |issue|
+      fields = issue['fields']
+
+      next unless fields
+
+      issue_key = issue['key']
+      logger.debug("Processing #{issue['key']} => #{issue['id']}")
+
+      assignee = fields.dig('assignee', 'name')
+      desc = fields['description']
+      issue_type = fields.dig('issue_type', 'name')
+      parent = fields.dig('parent', 'key') || "#{issue_key}."
+      points = fields['customfield_10005']&.to_i
+      status = fields.dig('status', 'name')
+      summary = fields['summary']
+
+      component = fields['components'].first
+      component = component['name'] if component
+
+      fix_version = fields['fixVersions'].first
+      fix_version = fix_version['name'] if fix_version
+
+      sprint_data = fields['customfield_10007']
+
+      if sprint_data
+        sprint_id ||= sprint_data.first['name']
+        output_filename ||= "#{sprint_id.gsub(/\s+/, '_')}.csv"
+      end
+
+      output_rows << [
+        issue_key,
+        parent,
+        %{#{parent}/#{summary} (#{issue_key})},
+        issue_type,
+        points,
+        sprint_id,
+        desc,
+        assignee,
+        fix_version,
+        component,
+        status
+      ]
+
+      ticket_count += 1
+    end
+
+    # while there are still tickets
+    logger.info("Processed #{ticket_count} of #{total_tickets}")
+  end
+
+  if output_rows.count.zero?
+    logger.error("No data found, not writing to '#{output_filename}'")
+    exit 1
+  end
+
+  File.open(output_filename, 'w') do |fh|
+    require 'csv'
+    fh.puts(
+      (output_header + output_rows.sort_by(&:first)).map do |r|
+        r.to_csv(force_quotes: true)
+      end.join
+    )
+  end
 end
