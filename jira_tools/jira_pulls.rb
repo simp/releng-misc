@@ -119,7 +119,7 @@ Dir.chdir(output_dir) do
 
       assignee = fields.dig('assignee', 'name')
       desc = fields['description']
-      issue_type = fields.dig('issue_type', 'name')
+      issue_type = fields.dig('issuetype', 'name')
       parent = fields.dig('parent', 'key') || "#{issue_key}."
       points = fields['customfield_10005']&.to_i
       status = fields.dig('status', 'name')
