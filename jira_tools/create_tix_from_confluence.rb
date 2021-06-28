@@ -33,6 +33,21 @@ def find_ticket(tikid)
   return nil if found == false
 end
 
+def to_ascii(x)
+  #Depending on how the table is pulled from confluence it can have
+  #non Ascii characters in it.  Some of the fields in JIRA don't like this
+  #and the ticket creation will fail. This removes non-ascii characters from
+  #a string.
+  encoding_options = {
+    :invalid           => :replace,  # Replace invalid byte sequences
+    :undef             => :replace,  # Replace anything not defined in ASCII
+    :replace           => '',        # Use a blank for those replacements
+    :universal_newline => true       # Always break lines with \n
+  }
+
+  x.encode(Encoding.find('ASCII'), encoding_options)
+end
+
 # initialize
 @jira_id = ''
 inputfile = 'test.csv'
@@ -40,13 +55,16 @@ outputfile = 'test_tickets.csv'
 lines = 0
 userid = ENV['JIRA_API_TOKEN'] or raise("Env var JIRA_API_TOKEN not set!  (ex: 'me@here.com:123456789012')")
 resultfile = 'putresult.json'
-allresultsfile = 'allresults.json'
+allresultsfile = File.open('allresults.output', 'w')
 
 @tickets = Array.new { {} }
+
 
 # initialize the OSes in an array
 os_type = ['', '', '', '', '', '', 'EL7', 'EL8', 'OEL7', 'OEL8', 'RHEL7', 'RHEL8']
 jira_proj = 'JJTEST'
+label = ''
+dryrun = false
 
 # get the filename and project if input by the user
 optsparse = OptionParser.new do |opts|
@@ -56,6 +74,12 @@ optsparse = OptionParser.new do |opts|
   end
   opts.on('-p', '--project PROJECT', "Jira Project to create tickets (#{jira_proj})") do |s|
     jira_proj = s.strip
+  end
+  opts.on('-d', '--dry-run', 'Do not perform the ticket creation just output commands to the command file') do
+    dryrun = true
+  end
+  opts.on('-l', '--label LABEL', "Label to place on tickets (#{label}) ") do |s|
+    label = s.strip
   end
   opts.on('-h', '--help', 'Help') do
     puts opts
@@ -82,9 +106,9 @@ CSV.foreach(inputfile) do |col|
     ticket_id = col[0]
     summary = col[1]
     descr = col[2]
-    component = col[3]
+    component = to_ascii(col[3]).strip
     blocker = col[4]
-    points = col[5]
+    points = col[5].to_i
     blocker_id = nil
     parent_id = nil
 
@@ -179,7 +203,10 @@ CSV.foreach(inputfile) do |col|
         json_line += ',"description":{"version":1,"type":"doc","content":[{"type":"paragraph"'
         json_line += ",\"content\":[{\"type\":\"text\",\"text\":\"#{mydesc}\"}]}]}"
       end
-      json_line += ",\"components\":[{\"name\":\"#{component}\"}]" unless component.nil?
+      if !component.nil? and !component.empty?
+        json_line += ",\"components\":[{\"name\":\"#{component}\"}]"
+      end
+      json_line += ",\"labels\":[\"#{label}\"]" unless label.empty?
       json_line += ",\"parent\":{\"key\":\"#{parentid}\"}" if subtask == true
       blocker_line = ',"update":{"issuelinks":[{"add":'
       blocker_line += '{"type":{"name":"Blocks","inward":"is blocked by","outward":"blocks"},'
@@ -201,23 +228,23 @@ CSV.foreach(inputfile) do |col|
 
       # save the command (if it fails we can try it manually)
       cmdfile.puts "#{cmd}\n\n"
-      exit_val = system(cmd)
-      if exit_val == true
-        File.open(resultfile).each do |row|
-          puts row
-          jsonrow = JSON.parse(row)
-          jira_id = jsonrow['key']
-          puts "Your ticket is #{jsonrow['id']}, ticket #{jira_id}"
+      unless dryrun
+        exit_val = system(cmd)
+        if exit_val == true
+          File.open(resultfile).each do |row|
+            puts row
+            jsonrow = JSON.parse(row)
+            jira_id = jsonrow['key']
+            puts "Your ticket is #{jsonrow['id']}, ticket #{jira_id}"
+          end
+        else
+          puts "command failed (check #{resultfile})"
         end
-      else
-        puts "command failed (check #{resultfile})"
-      end
-      puts "jira_id is #{jira_id}"
+        puts "jira_id is #{jira_id}"
 
-      # append results file in case we need to look for fails
-      last_results = File.read(resultfile)
-      File.open(allresultsfile, 'a') do |handle|
-        handle.puts last_results
+        # append results file in case we need to look for fails
+        last_results = File.read(resultfile)
+        allresultsfile.puts last_results
       end
 
       # save the parameters for later
@@ -247,4 +274,6 @@ puts 'final tickets'
 @tickets.each do |tic|
   puts tic
 end
+
+allresultsfile.close
 # while
