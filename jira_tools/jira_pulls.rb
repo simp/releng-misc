@@ -28,7 +28,7 @@ OptionParser.new do |opts|
   opts.on('-s', '--sprint NUMBER', 'Sprint') do |s|
     sprint_number = s.strip
   end
-  opts.on('-d', '--closed since days', 'number of days (changes to closed query)') do |d|
+  opts.on('-d', '--days NUMBER', 'number of days') do |d|
     days = d.strip
     output_filename = "tix_closed_#{days}.csv"
   end
@@ -51,14 +51,12 @@ if sprint_number
   filter = "jql=sprint=#{sprint_number}"
   output_filename = "Sprint_#{sprint_number}.csv"
 elsif days
-  filter = "jql=resolved%3e%2d#{days}d%20and%20status=closed"
+  filter = %{jql=updated>-#{days}d}
   output_filename = %(Past_#{days}_Days_#{Time.now.strftime('%Y-%m-%d')}.csv)
 else
-  filter = 'jql=sprint%20in%20openSprints()'
+  filter = 'jql=sprint in openSprints()'
   output_filename = nil
 end
-
-logger.info("Query is #{filter}")
 
 Dir.chdir(output_dir) do
   total_tickets = 1
@@ -89,8 +87,10 @@ Dir.chdir(output_dir) do
   while ticket_count < total_tickets
 
     # call the code
-    new_filter = "#{filter}&maxResults=#{maxresults}&startAt=#{ticket_count}"
-    response = RestClient.get(jira_url + new_filter)
+    new_filter = jira_url + URI.escape("#{filter}&maxResults=#{maxresults}&startAt=#{ticket_count}")
+    logger.info("Query is #{new_filter}")
+
+    response = RestClient.get(new_filter)
 
     unless response.code == 200
       logger.error("Error with HTTP request: #{response}")
