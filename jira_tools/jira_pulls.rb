@@ -51,7 +51,7 @@ if sprint_number
   filter = "jql=sprint=#{sprint_number}"
   output_filename = "Sprint_#{sprint_number}.csv"
 elsif days
-  filter = %{jql=updated>-#{days}d}
+  filter = %(jql=updated>-#{days}d)
   output_filename = %(Past_#{days}_Days_#{Time.now.strftime('%Y-%m-%d')}.csv)
 else
   filter = 'jql=sprint in openSprints()'
@@ -87,7 +87,7 @@ Dir.chdir(output_dir) do
   while ticket_count < total_tickets
 
     # call the code
-    new_filter = jira_url + URI.escape("#{filter}&maxResults=#{maxresults}&startAt=#{ticket_count}")
+    new_filter = jira_url + CGI.escape("#{filter}&maxResults=#{maxresults}&startAt=#{ticket_count}")
     logger.info("Query is #{new_filter}")
 
     response = RestClient.get(new_filter)
