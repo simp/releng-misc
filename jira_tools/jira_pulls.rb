@@ -87,7 +87,7 @@ Dir.chdir(output_dir) do
   while ticket_count < total_tickets
 
     # call the code
-    new_filter = jira_url + CGI.escape("#{filter}&maxResults=#{maxresults}&startAt=#{ticket_count}")
+    new_filter = "#{jira_url}#{filter}&maxResults=#{maxresults}&startAt=#{ticket_count}"
     logger.info("Query is #{new_filter}")
 
     response = RestClient.get(new_filter)
