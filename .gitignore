@@ -61,3 +61,8 @@ build-iPhoneSimulator/
 *.log
 *.orig
 /.gems
+
+# Jira Tools
+
+/jira_tools/*.csv
+/jira_tools/jira_pulls_output/
