@@ -1,0 +1,27 @@
+---
+config:
+  transport: local
+  local:
+    bundled-ruby: true
+    # Use PWD because it's cross-platform and probably writable
+    tmpdir:
+     _plugin: env_var
+     var: PWD
+
+groups:
+  - name: github_repos
+    targets:
+      - _plugin: github_inventory
+        org:
+          _plugin: env_var
+          var: GITHUB_ORG
+          default: simp
+        github_api_token:
+          _plugin: env_var
+          var: GITHUB_API_TOKEN
+        allow_list:
+          - '/^pupmod-simp-(simplib|iptables|acpid)/'
+        #  - 'simp-core'
+        #block_list:
+        #  - '/_/'
+        #archived_repos: true
