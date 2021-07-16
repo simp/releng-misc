@@ -1,3 +1,22 @@
+# Returns gitlab_inventory targets with the facts of a corresponding
+# (identically-named) github_inventory target in a new 'gl_matching_gh_repo'
+# fact.
+#
+# @targets
+#   gitlab_inventory targets
+#
+# @gh_targets
+#   github_inventory targets
+#
+# @param gitlab_api_token
+#    GitLab API token.  Doesn't require any scope for public repos.
+#
+# @param github_api_token
+#    GitHub API token.  Doesn't require any scope for public repos.
+#
+# @remove_unmatched
+#   When `true`, only returns targets that had matching github_inventory targets
+#
 # @private true
 plan releng::gitlab_project__matching_github_repos_facts (
   TargetSpec $targets = 'gitlab_projects',
