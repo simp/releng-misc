@@ -3,12 +3,18 @@
 # @param targets
 #    By default: `github_repos` group from inventory
 #
+# @param target_dir
+#    Local directory to download assets into
+#
 plan releng::github_download_release_assets(
   TargetSpec $targets = 'github_repos',
-  Stdlib::AbsolutePath $dest_path = system::env('PWD'),
+  Stdlib::Absolutepath $target_dir = "${system::env('PWD')}/_release_assets",
   Hash $repo_release_list = {
   },
   Sensitive[String[1]] $github_api_token = Sensitive.new(system::env('GITHUB_API_TOKEN')),
+  String $exclude_substrings = [
+    '.src.noarch'
+  ]
 ){
   $github_repos = get_targets($targets)
 
@@ -39,6 +45,10 @@ plan releng::github_download_release_assets(
     [$result['target'], $rel_data]
   })
 
+  apply('localhost', '_description' => "Ensure target directory at '${target_dir}'"){
+    file{ $target_dir: ensure => directory }
+  }
+
   # For each release download each asset (filter on/out el7? el8? src?)
   $release_download_results = $release_assets.map |$repo_name, $release| {
     out::message("== $repo_name (Release: ${release['tag_name']}")
@@ -48,8 +58,10 @@ plan releng::github_download_release_assets(
       out::message("  -- Asset: ${asset['name']}")
       log::info("  -- Asset URL: ${asset['browser_download_url']}")
 
+      # TODO reject downloads based on pattern?
+
       $dl_result = run_command(
-        "curl -o '${dest_path}/${asset['name']}' -sS -L -H '${asset['content']}' '${asset['browser_download_url']}'",
+        "curl -o '${target_dir}/${asset['name']}' -sS -L -H '${asset['content']}' '${asset['browser_download_url']}'",
         'localhost',
         "Download ${asset['browser_download_url']}"
       )

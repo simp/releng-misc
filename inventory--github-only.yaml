@@ -19,9 +19,10 @@ groups:
         github_api_token:
           _plugin: env_var
           var: GITHUB_API_TOKEN
-        allow_list:
-          - '/^pupmod-simp-(simplib|iptables|acpid)/'
+        #allow_list:
         #  - 'simp-core'
-        #block_list:
-        #  - '/_/'
+        block_list:
+          - '/^github/'
+          - 'releng-misc'
+          - 'puppetsync'
         #archived_repos: true
