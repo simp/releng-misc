@@ -1,0 +1,29 @@
+---
+config:
+  transport: local
+  local:
+    tmpdir:
+     _plugin: env_var
+     var: PWD
+    bundled-ruby: true  # requires Bolt >= 2.37
+
+groups:
+  - name: github_repos
+    targets:
+      - _plugin: github_inventory
+        org:
+          _plugin: env_var
+          var: GITHUB_ORG
+          default: simp
+        github_api_token:
+          _plugin: env_var
+          var: GITHUB_API_TOKEN
+        archived_repos: false
+        # allow_list:
+        # #   - '/^pupmod-/'
+        #   - 'pupmod-simp-simplib'
+        #   - 'puppetlabs-puppet_authorization'
+        block_list:
+          - '/^github/'
+          - 'releng-misc'
+          - 'puppetsync'

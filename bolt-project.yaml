@@ -1,7 +1,7 @@
 ---
 name: releng
 save-rerun: false
-format: rainbow
+format: human
 
 # A list of task names to show in `bolt task show` output (if they exist).
 #
@@ -19,7 +19,8 @@ plans:
   - gitlab_inventory::*
 
 modules:
-  - bolterrific/github_inventory
+  - name: bolterrific/github_inventory
+    version_requirement: ">= 0.4.1"
   - bolterrific/gitlab_inventory
   - puppetlabs/yaml
   - nwops/debug
