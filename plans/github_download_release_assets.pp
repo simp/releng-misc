@@ -19,13 +19,13 @@ plan releng::github_download_release_assets(
 ){
   $github_repos = get_targets($targets)
 
-
   $releases_resultset = run_task_with(
     'http_request', $github_repos, "Get GitHub releases data for all repo targets"
   ) |$repo_target| {
     {
-      # TODO look up release by tag for each target and pass it into URI template here
-      'base_url' => releng::expand_uri( $repo_target.facts['releases_url'], {} ),
+      # Q: look up release by tag for each target and pass it into URI template here?
+      # A: Probably no need; this method works with ~100 fewer API calls
+      'base_url' => $repo_target.facts['releases_url'].releng::expand_uri( {} ),
       'method'   => 'get',
       'headers' => {
         'Accept'        => 'application/vnd.github.v3+json',
@@ -35,7 +35,6 @@ plan releng::github_download_release_assets(
     }
   }
 
-  # FIXME currently just downloads latest release
   $release_assets = Hash( $releases_resultset.ok_set.map |$result| {
     $rel_data = $result.value['body'].filter |$rel| {
       !$rel['draft'] and !$rel['prerelease']
@@ -44,8 +43,11 @@ plan releng::github_download_release_assets(
         $rels.filter |$rel| { $rel['tag_name'] == $rel_tag }.then |$x| { $x[0] }.lest || {
           $msg = "ERROR: Expected ${result.target.name} release with tag '${rel_tag}' but couldn't find it!"
           log::error($msg)
-          fail_plan($msg) # TODO We should probably fail in this case
+          # fail_plan($msg) # TODO We should probably fail in this case
+                            # unless we are using the plan to identify missing releases/RPMs
           false # TODO or we could gather all the not-founds and report them in later in a collective failure`
+          # FIXME second option is better; we need to identify repos without release assets
+
         }
       }.lest || {
         # FIXME : when no release_tag is given, should we:
@@ -72,6 +74,25 @@ plan releng::github_download_release_assets(
 
   # For each release download each asset (filter on/out el7? el8? src?)
   $release_download_results = $release_assets.map |$repo_name, $release| {
+    if $release =~ Undef {
+       $expected_tag = $github_repos.filter |$t| { $t.name == $repo_name }[0].then |$t| {
+         $t.facts['_release_tag']
+       }.lest || { '???' }
+       $expected_relpage = $github_repos.filter |$t| { $t.name == $repo_name }[0].then |$t| {
+         $t.facts['html_url'].then |$x| { "$x/releases" }
+       }.lest || { '???' }
+       $err = "Expected ${repo_name} release with tag '${expected_tag}' but couldn't find it!"
+       log::error( "UNEXPECTED ERROR: $err\nFind out why!" )
+       out::message( " - Releases page: ${expected_relpage}" )
+        debug::break()
+        # TODO what should we do when this happens?
+        $msg = "SKIPPING ${repo_name}: $err"
+        log::warn( "  -- ${msg}" )
+        next([
+          $repo_name,
+          Result.new(get_target('localhost'), { 'status' => 'skipped',  'skipped?' => $msg })
+        ])
+    }
     out::message("== $repo_name (Release: ${release['tag_name']})")
     out::verbose("  -- Release page: ${release['html_url']}")
     $assets = $release['assets']

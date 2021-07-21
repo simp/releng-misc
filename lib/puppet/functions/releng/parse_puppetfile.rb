@@ -23,17 +23,17 @@ Puppet::Functions.create_function(:'releng::parse_puppetfile') do
     end
 
     def mod(name, args = nil)
-      Puppet.warning("== Puppetfile:  #{__method__.to_s} : name='#{name}'" )
+      Puppet.debug("== Puppetfile:  #{__method__.to_s} : name='#{name}'" )
       @librarian.add_module(name, args)
     end
 
     def forge(location)
-      Puppet.warning("== Puppetfile:  #{__method__.to_s} : location='#{location}'" )
+      Puppet.debug("== Puppetfile:  #{__method__.to_s} : location='#{location}'" )
       @librarian.set_forge(location)
     end
 
     def moduledir(location)
-      Puppet.warning("== Puppetfile:  #{__method__.to_s} : location='#{location}'" )
+      Puppet.debug("== Puppetfile:  #{__method__.to_s} : location='#{location}'" )
       @librarian.set_moduledir(location)
     end
 

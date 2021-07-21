@@ -15,13 +15,10 @@ plan releng::download_assets_from_puppetfile(
   Stdlib::Absolutepath $target_dir = "${system::env('PWD')}/_release_assets",
   Sensitive[String[1]] $github_api_token = Sensitive.new(system::env('GITHUB_API_TOKEN')),
   Array[String[1]] $exclude_patterns = [
-    '\.src.*\.rpm$'
+    '\.src.*\.rpm$',
+    '\.el7.*\.rpm$',
   ]
 ){
-  apply('localhost', '_description' => "Ensure target directory at '${target_dir}'"){
-    file{ $target_dir: ensure => directory }
-  }
-
   if $puppetfile =~ Stdlib::HTTPUrl {
     $dl_result = run_command(
       "curl -sS -L -H 'text/plain' '${puppetfile}'",
@@ -36,23 +33,44 @@ plan releng::download_assets_from_puppetfile(
 
   $github_repos = get_targets($targets)
 
-  $pf_gh_repos = Hash($pf_mods.map |$pf_path, $pf_mod| {
-     $git_url = $pf_mod['git']
-     $gh_repos = $github_repos.filter |$gh_repo| {
-       $git_url.regsubst(/\.git$/,'')  ==  $gh_repo.facts['clone_url'].regsubst(/\.git$/,'')
+  $pf_gh_repos = $pf_mods.map |$pf_path, $pf_mod| {
+     $git_url = $pf_mod['git'].regsubst(/\.git$/,'')
+
+     $matching_gh_repos = $github_repos.filter |$gh_repo| {
+       $git_url  ==  $gh_repo.facts['clone_url'].regsubst(/\.git$/,'')
+     }.releng::empty2undef.lest || {
+       log::error( "ERROR: no GitHub repos' clone_url match Puppetfile mod '${pf_mod['name']} (${pf_mod['git']})" )
+       log::warn( "Trying workaround...")
+
+       # FIXME
+       $git_url_wa = $git_url.regsubst(/\/simp-rsync$/,'/simp-rsync-skeleton')
+       $github_repos.filter |$gh_repo| {
+         $gh_clone_url = $gh_repo.facts['clone_url'].regsubst(/\.git$/,'')
+         $is_match = ($git_url_wa == $gh_clone_url)
+         log::debug( "  --> git_url_wal : '${git_url_wa}'")
+         log::debug( "  --> gh_clone_url: '${gh_clone_url}' (${is_match})" )
+         $is_match
+       }.map |$gh_repo| {
+         log::warn( "  ...workaround succeeded!")
+         $t = Target.new( "${pf_mod['name']}.workaround" )
+         $gh_repo.config.each |$k, $v| { $t.set_config( $k, $v ) }
+         $gh_repo.vars.each |$k, $v| { $t.set_var($k, $v) }
+         $t.add_facts( $gh_repo.facts )
+         $t
+       }
      }
 
-     $gh_repos.each |$gh_repo| {
+     $matching_gh_repos.each |$gh_repo| {
        $gh_repo.add_facts( { '_pf_mod' => $pf_mod } )
        if $pf_mod['tag'] { $gh_repo.add_facts({ '_release_tag' => $pf_mod['tag'] }) }
      }
 
-     if $gh_repos.size > 1 {
-       log::error("ERROR: Somehow there were more than 1 github repo targets found for puppetfile mod at '${pf_path}':\n\n${$gh_repos.to_yaml}")
+     if $matching_gh_repos.size > 1 {
+       log::error("ERROR: Somehow there were more than 1 github repo targets found for puppetfile mod at '${pf_path}':\n\n${matching_gh_repos.to_yaml}")
        debug::break()
      }
-     [$pf_path, $gh_repos[0]]
-  })
+     [$pf_path, $matching_gh_repos[0]]
+  }.with |$x| { Hash($x) }
 
   $unmatched_pf_mods = $pf_gh_repos.filter |$k,$v| { $v =~ Undef }
   if $unmatched_pf_mods.size > 0 {
