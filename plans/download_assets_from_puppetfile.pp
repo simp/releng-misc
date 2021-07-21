@@ -1,4 +1,5 @@
-# Prints number of Targets from inventory
+# Read a Puppetfile of tagged mods and download the RPMs attached to their 
+# GitHub release pages
 #
 # @param targets
 #    By default: `github_repos` group from inventory
