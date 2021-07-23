@@ -1,11 +1,12 @@
-# Read a Puppetfile of tagged mods and download the RPMs attached to their 
+# Read a Puppetfile of tagged mods and download the RPMs attached to their
 # GitHub release pages
 #
 # @param targets
 #    By default: `github_repos` group from inventory
 #
-#    If a target has the var 'release_tag', that tag will be used to identify
-#    the release to download.  Otherwise, the latest release will be downloaded.
+# @param puppetfile
+#    Path or URL to simp-core Puppetfile (e.g., `Puppetfile.pinned`) to identify
+#    git repos and release tags
 #
 # @param target_dir
 #    Local directory to download assets into
@@ -14,11 +15,11 @@ plan releng::download_assets_from_puppetfile(
   TargetSpec $targets = 'github_repos',
   Variant[Stdlib::HTTPUrl,Stdlib::Absolutepath] $puppetfile = 'https://raw.githubusercontent.com/simp/simp-core/master/Puppetfile.pinned',
   Stdlib::Absolutepath $target_dir = "${system::env('PWD')}/_release_assets",
-  Sensitive[String[1]] $github_api_token = Sensitive.new(system::env('GITHUB_API_TOKEN')),
   Array[String[1]] $exclude_patterns = [
     '\.src.*\.rpm$',
     '\.el7.*\.rpm$',
-  ]
+  ],
+  Sensitive[String[1]] $github_api_token = Sensitive.new(system::env('GITHUB_API_TOKEN')),
 ){
   if $puppetfile =~ Stdlib::HTTPUrl {
     $dl_result = run_command(
@@ -30,8 +31,8 @@ plan releng::download_assets_from_puppetfile(
   } else {
     $puppetfile_data = file::read($puppetfile)
   }
-  $pf_mods = releng::parse_puppetfile($puppetfile_data)
 
+  $pf_mods = releng::parse_puppetfile($puppetfile_data).with |$data| { Hash($data) }
   $github_repos = get_targets($targets)
 
   $pf_gh_repos = $pf_mods.map |$pf_path, $pf_mod| {
@@ -41,16 +42,13 @@ plan releng::download_assets_from_puppetfile(
        $git_url  ==  $gh_repo.facts['clone_url'].regsubst(/\.git$/,'')
      }.releng::empty2undef.lest || {
        log::error( "ERROR: no GitHub repos' clone_url match Puppetfile mod '${pf_mod['name']} (${pf_mod['git']})" )
-       log::warn( "Trying workaround...")
 
-       # FIXME
+       # FIXME this hack fixes a redirect for a single known repo; won't help others
+       log::warn( "Trying workaround...")
        $git_url_wa = $git_url.regsubst(/\/simp-rsync$/,'/simp-rsync-skeleton')
        $github_repos.filter |$gh_repo| {
          $gh_clone_url = $gh_repo.facts['clone_url'].regsubst(/\.git$/,'')
-         $is_match = ($git_url_wa == $gh_clone_url)
-         log::debug( "  --> git_url_wal : '${git_url_wa}'")
-         log::debug( "  --> gh_clone_url: '${gh_clone_url}' (${is_match})" )
-         $is_match
+         $git_url_wa == $gh_clone_url
        }.map |$gh_repo| {
          log::warn( "  ...workaround succeeded!")
          $t = Target.new( "${pf_mod['name']}.workaround" )
@@ -64,6 +62,7 @@ plan releng::download_assets_from_puppetfile(
      $matching_gh_repos.each |$gh_repo| {
        $gh_repo.add_facts( { '_pf_mod' => $pf_mod } )
        if $pf_mod['tag'] { $gh_repo.add_facts({ '_release_tag' => $pf_mod['tag'] }) }
+       if $pf_mod['branch'] { $gh_repo.add_facts({ '_tracking_branch' => $pf_mod['branch'] }) }
      }
 
      if $matching_gh_repos.size > 1 {
@@ -81,24 +80,6 @@ plan releng::download_assets_from_puppetfile(
     log::error($msg)
     log::error("$msg_head (see list above)")
     # FIXME : Should the plan fail here?  should there be an option?
-    #
-    # Currently 1 failing ((clone_url redirects to https://github.com/simp/simp-rsync-skeleton):
-    #  => {
-    #           "git" => "https://github.com/simp/simp-rsync",
-    #  "install_path" => "src/assets",
-    #      "mod_name" => "rsync_data_pre64",
-    #  "mod_rel_path" => "src/assets/rsync_data_pre64",
-    #          "name" => "simp-rsync_data_pre64",
-    #      "rel_path" => "src/assets/simp-rsync_data_pre64",
-    #     "repo_name" => "simp-rsync",
-    #           "tag" => "6.2.1-2"
-    #  }
-    #
-    #  However:
-    #    These two puppetfle mods clone from the same location (after redirects)
-    #    [  2] "src/assets/rsync_data:       https://github.com/simp/simp-rsync-skeleton",
-    #    [  3] "src/assets/rsync_data_pre64: https://github.com/simp/simp-rsync",
-
     debug::break()
   }
 
@@ -114,5 +95,25 @@ plan releng::download_assets_from_puppetfile(
     }
   )
 
+  #out::message( $pf_mods.map |$k,$v| { $v['tag'].lest || { "${v['branch']} (branch)" } }.join("\n") )
+  $pf_mods.each |$k,$v| {
+    out::message( "${v['repo_name']},${v['tag'].lest || { "${v['branch']} (branch)" } }" )
+  }
+  out::message( "TODO: prepare CSV report of pf_mods and their release status" )
+  $pf_mods.each |$k,$v| {
+    $t = $matched_pf_mods[$k]
+    # $t.facts['_fallback_release_tag']
+    # $t.facts['_release_tag']
+    # $t.facts['_tracking_branch']
+    # $t.facts['_release_assets'].size
+    $gh_release_tag = $t.facts['_release_tag'].lest || {
+      $t.facts['_fallback_release_tag'].then |$x| { "${x} (fallback)" }
+    }
+    $num_assets = $t.facts['_release_assets'].then |$x| { $x.size }.lest || { '---' }
+    $name = $v['repo_name']
+    $pf_tag = $v['tag'].lest || { "${v['branch']} (branch)" }
+    out::message( "${name},${pf_tag},${gh_release_tag},${num_assets}" )
+  }
+  debug::break()
   return($results)
 }
