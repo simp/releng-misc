@@ -26,7 +26,7 @@ components specified by simp-core Puppetfiles on its master branch and its
 latest tag. Simply run as follows:
 
 ```bash
-GITLAB_ACCESS_TOKEN=<your personal gitlab access token> \
+
  GITHUB_ACCESS_TOKEN=<your personal github access token> \
  bundle exec tools/release/generate_simp_release_status.rb \
   -o simp_component_release_status_2021_07_21.csv
