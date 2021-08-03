@@ -19,6 +19,7 @@ plan releng::github_download_release_assets(
   ],
   Boolean $branches_fall_back_to_latest_release = true,
   Integer[0] $min_expected_assets = 2,
+  Boolean $debug_problems = false,
 ){
   $github_repos = get_targets($targets)
 
@@ -40,7 +41,8 @@ plan releng::github_download_release_assets(
 
   $release_assets = Hash( $releases_resultset.ok_set.map |$result| {
     $rel_data = $result.value['body'].filter |$rel| {
-      !$rel['draft'] and !$rel['prerelease']
+      # keep !$rel['prerelease'], because we only grab when the pupmod has a branch instead of tag
+      !$rel['draft']
     }.with |$rels| {
       $result.target.facts['_release_tag'].then |$rel_tag| {
         $rels.filter |$rel| { $rel['tag_name'] == $rel_tag }.then |$x| { $x[0] }.lest || {
@@ -162,7 +164,7 @@ plan releng::github_download_release_assets(
       | NO_RELEASE_ASSETS_TAG_MSG
       log::warn( $err )
     }
-    debug::break()
+    if $debug_problems { debug::break() }
   }
 
   if (!$repos_without_release_assets.empty) {
@@ -175,7 +177,7 @@ plan releng::github_download_release_assets(
       | NO_RELEASE_ASSETS_MSG
       log::warn($err)
     }
-    debug::break()
+    if $debug_problems { debug::break() }
   }
 
   if (!$repos_with_few_release_assets.empty) {
@@ -184,7 +186,7 @@ plan releng::github_download_release_assets(
       $asset_names = $t.facts.get('_release_assets').lest || {[]}.map |$a| { $a['name'] }
       log::warn( "ERROR: Release assets for ${t.name} = ${asset_names}; less than expected (${min_expected_assets})")
     }
-    debug::break()
+    if $debug_problems { debug::break() }
   }
 
   return($release_download_results)

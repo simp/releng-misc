@@ -41,7 +41,7 @@ plan releng::download_assets_from_puppetfile(
      $matching_gh_repos = $github_repos.filter |$gh_repo| {
        $git_url  ==  $gh_repo.facts['clone_url'].regsubst(/\.git$/,'')
      }.releng::empty2undef.lest || {
-       log::error( "ERROR: no GitHub repos' clone_url match Puppetfile mod '${pf_mod['name']} (${pf_mod['git']})" )
+       log::error( "ERROR: no GitHub repos' clone_url matches Puppetfile mod '${pf_mod['name']} (${pf_mod['git']})" )
 
        # FIXME this hack fixes a redirect for a single known repo; won't help others
        log::warn( "Trying workaround...")
@@ -95,10 +95,6 @@ plan releng::download_assets_from_puppetfile(
     }
   )
 
-  #out::message( $pf_mods.map |$k,$v| { $v['tag'].lest || { "${v['branch']} (branch)" } }.join("\n") )
-  $pf_mods.each |$k,$v| {
-    out::message( "${v['repo_name']},${v['tag'].lest || { "${v['branch']} (branch)" } }" )
-  }
   out::message( "TODO: prepare CSV report of pf_mods and their release status" )
   $pf_mods.each |$k,$v| {
     $t = $matched_pf_mods[$k]
