@@ -27,8 +27,6 @@ plan releng::github_download_release_assets(
     'http_request', $github_repos, "Get GitHub releases data for all repo targets"
   ) |$repo_target| {
     {
-      # Q: look up release by tag for each target and pass it into URI template here?
-      # A: Probably no need; this method works with ~100 fewer API calls
       'base_url' => $repo_target.facts['releases_url'].releng::expand_uri( {} ),
       'method'   => 'get',
       'headers' => {
@@ -48,11 +46,7 @@ plan releng::github_download_release_assets(
         $rels.filter |$rel| { $rel['tag_name'] == $rel_tag }.then |$x| { $x[0] }.lest || {
           $msg = "ERROR: Expected ${result.target.name} release with tag '${rel_tag}' but couldn't find it!"
           log::error($msg)
-          # fail_plan($msg) # TODO We should probably fail in this case
-                            #     (unless we are using the plan to identify missing releases/RPMs)
-          false # TODO or we could gather all the not-founds and report them in later in a collective failure`
-          # FIXME second option is better; we need to identify repos without release assets
-
+          false
         }
       }.lest || {
         # FIXME : when no release_tag is given, should we:

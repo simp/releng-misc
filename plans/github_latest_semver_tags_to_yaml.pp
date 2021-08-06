@@ -6,7 +6,7 @@
 # @note reports repos with "SemVer-ish" tags (includes `/^v/` and `/-d$/`)
 #
 # @param targets
-#    Name of `github_inventory` Targets (or inventory group)
+#    `github_inventory` Targets (or inventory group)
 #
 # @param github_api_token
 #    GitHub API token.  Doesn't require any scope for public repos.
