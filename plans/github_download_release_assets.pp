@@ -10,6 +10,9 @@
 # @param target_dir
 #    Local directory to download assets into
 #
+# @param github_api_token
+#    GitHub API token.  Doesn't require any scope for public repos.
+#
 plan releng::github_download_release_assets(
   TargetSpec $targets = 'github_repos',
   Stdlib::Absolutepath $target_dir = "${system::env('PWD')}/_release_assets",

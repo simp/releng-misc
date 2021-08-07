@@ -16,8 +16,8 @@
 #    Path or URL to simp-core Puppetfile.<method> that identifies mods'
 #    (github repo) clone_url and release tags
 #
-# @param pf_mod
-#    data from a Puppetefile 'mod' entry
+# @param pf_mods
+#    Data from a Puppetfile's '`mod`' entries
 #
 plan releng::puppetfile::github::repo_targets(
   TargetSpec $targets = 'github_repos',
