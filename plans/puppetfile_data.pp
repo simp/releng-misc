@@ -6,7 +6,7 @@
 # @param targets
 #    Target from which to download/read Puppetfile
 #
-plan releng::puppetfile::data(
+plan releng::puppetfile_data(
   TargetSpec $targets = 'localhost',
   Variant[Stdlib::HTTPUrl,Stdlib::Absolutepath] $puppetfile = 'https://raw.githubusercontent.com/simp/simp-core/master/Puppetfile.pinned',
 ){

@@ -13,7 +13,10 @@
 # @param github_api_token
 #    GitHub API token.  Doesn't require any scope for public repos.
 #
-plan releng::github_download_release_assets(
+# @param exclude_patterns
+#   patterns of filenames to avoid downloading
+#
+plan releng::github::download_release_assets(
   TargetSpec $targets = 'github_repos',
   Stdlib::Absolutepath $target_dir = "${system::env('PWD')}/_release_assets",
   Sensitive[String[1]] $github_api_token = Sensitive.new(system::env('GITHUB_API_TOKEN')),

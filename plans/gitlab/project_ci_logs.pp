@@ -19,19 +19,19 @@
 #   How many pages of each project's jobs to query
 #        Dial this back when hitting API rate-limits (risks missing jobs)
 #
-# @param ignore_list
-#    List of project names to ignore, as Strings or Patterns
+# @param exclude_list
+#    List of project names to exclude
 #
-#        Note that it's more efficient (and API-friendly) to do this from the
-#        inventory.yaml, using the gitlab_inventory plugin's `block_list`
+#    Note that it's more efficient (and API-friendly) to do this from the
+#    inventory.yaml, using the gitlab_inventory plugin's `block_list`
 #
 # @param include_list
 #    List of project names to include, as Strings or Patterns.
 #
-#        Note that it's more efficient (and API-friendly) to do this from the
-#        inventory.yaml, using the gitlab_inventory plugin's `allow_list`
+#    Note that it's more efficient (and API-friendly) to do this from the
+#    inventory.yaml, using the gitlab_inventory plugin's `allow_list`
 #
-plan releng::gitlab_project_ci_logs (
+plan releng::gitlab::project_ci_logs (
   TargetSpec $targets = 'gitlab_projects',
   Stdlib::Absolutepath $project_dir = system::env('PWD'),
   Sensitive[String[1]] $gitlab_api_token = Sensitive.new(system::env('GITLAB_API_PRIVATE_TOKEN')),
@@ -40,20 +40,20 @@ plan releng::gitlab_project_ci_logs (
   String $start_at = '2021-02-11T13:00:00.000Z',
   String $end_at   = '2021-02-16T01:16:00.000Z',
   Enum[created_at,started_at,any] $start_type = 'started_at',
-  Optional[[Array[Variant[String,Regexp]]]] $ignore_list = [ /gitlab-oss/ ],
+  Optional[[Array[Variant[String,Regexp]]]] $exclude_list = [ /gitlab-oss/ ],
   Optional[[Array[Variant[String,Regexp]]]] $include_list = undef
 ){
   $gitlab_projects = run_plan(
-    'releng::gitlab_project__filter',
+    'releng::gitlab::project__filter',
     {
       'targets'      => $targets,
-      'ignore_list'  => $ignore_list,
+      'exclude_list'  => $exclude_list,
       'include_list' => $include_list,
     }
   )
 
   $matching_projects_jobs = run_plan(
-    'releng::gitlab_project__ci_job_daterange_filter',
+    'releng::gitlab::project__ci_job_daterange_filter',
     {
       'targets'            => $gitlab_projects,
       'gitlab_api_token'   => $gitlab_api_token,

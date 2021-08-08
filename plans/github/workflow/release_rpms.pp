@@ -1,46 +1,44 @@
 # Trigger `release_rpms.yml` workflow
 #
-# @param targets
-#    `github_inventory` Targets with clone_urls expected to match the
-#    Puppetfile mod' :git urls
+# @param trigger_org
+#   Org for `trigger_repo`
+#
+# @param trigger_repo
+#   Repo used to run the workflow (e.g., `pupmod-simp-mockup`)
+#   Also the target repo to release unless `target_repo` is set
+#
+# @param trigger_ref
+#   Ref in `trigger_repo` from which to run the workflow
 #
 # @param github_api_token
-#    GitHub API token.  Doesn't require any scope for public repos.
+#    GitHub API token, with scope that can run workflows and upload attachments
 #
-#  #        release_tag:
-#        description: "Release tag"
-#        required: true
-#      clobber:
-#        description: "Clobber identical assets?"
-#        required: false
-#        default: 'yes'
-#      clean:
-#        description: "Wipe all release assets first?"
-#        required: false
-#        default: 'no'
-#      autocreate_release:
-#        # A GitHub release is needed to upload artifacts to, and some repos
-#        # (e.g., forked mirrors) only have tags.
-#        description: "Create release if missing? (tag must exist)"
-#        required: false
-#        default: 'yes'
-#      build_container_os:
-#        description: "Build container OS"
-#        required: true
-#        default: 'centos8'
-#      target_repo:
-#        description: "Target repo (instead of this one)"
-#        required: false
-#      # WARNING: To avoid exposing secrets in the log, only use this token with
-#      #          action/script's `github-token` parameter, NEVER in `env:` vars
-#      target_repo_token:
-#        description: "API token for uploading to target repo"
-#        required: false
-#      dry_run:
-#        description: "Dry run (Test-build RPMs)"
-#        required: false
-#        default: 'no'
-plan releng::github::release_rpms_workflow(
+# @param release_tag
+#   Release tag (e.g., `1.2.3`, `1.2.3-pre1`, 'v1.2.3` (mirrored forks))
+#
+# @param clobber_identical_assets
+#   Clobber identical assets?
+#
+# @param wipe_all_assets_first
+#   Wipe all release assets first?
+#
+# @param autocreate_release
+#   Create release if missing? Note: the `release_tag` must already exist
+#
+# @param build_container_os
+#   SIMP Build Container OS to build RPMs (e.g., `centos8`, `centos7`)
+#
+# @param target_repo
+#   Target repo (if targeting repo other than the trigger repo)
+#
+# @param dry_run
+#   Dry run (Test-build RPMs, but do not attach to GitHub release)
+#
+# @param targets
+#   Mandatory plan parameter, has no effect
+#   (The API http_request task is always run from `localhost`)
+#
+plan releng::github::workflow::release_rpms(
   TargetSpec $targets                    = 'localhost',
   String[1] $release_tag,
   Boolean $clobber_identical_assets      = true,

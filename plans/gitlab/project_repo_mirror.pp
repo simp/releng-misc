@@ -1,6 +1,8 @@
-# Mirror (or re-mirror) all GitLab projects to their corresponding GitHub repo
+# @summary Mirror (or re-mirror) all GitLab projects from their corresponding
+#   GitHub repo
 #
-# Targets are defined by inventory.yaml
+# @note GitLab and GitHubb Targets are defined in the inventory
+#   (e.g., `inventory.yaml`)
 #
 # @param targets
 #    By default: `gitlab_projects` group from inventory
@@ -12,39 +14,46 @@
 #   The Gitlab API token that will status/configure GitLab projects
 #   (needs `read-write-api` scope)
 #
-# @param ignore_list
-#    List of project names to ignore, as Strings or Patterns
+# @param exclude_list
+#    List of GitLab project names to exclude
 #
-#        Note that it's more efficient (and API-friendly) to do this from the
-#        inventory.yaml, using the gitlab_inventory plugin's `block_list`
+#    * When set, excludes projects with matching names
+#    * When unset, permits all projects allowed by `include_list` (if defined)
+#
+#    Note that it's more efficient (and API-friendly) to do exclude Targets from
+#    the inventory, using the gitlab_inventory` plugin's `block_list`
 #
 # @param include_list
-#    List of project names to include, as Strings or Patterns.
+#    List of GitLab project names to include.
 #
-#        Note that it's more efficient (and API-friendly) to do this from the
-#        inventory.yaml, using the gitlab_inventory plugin's `allow_list`
-plan releng::gitlab_project_repo_mirror(
+#    * When set, includes only projects with matching names
+#     (and excludes all others).
+#    * When unset, all projects not excluded by `exclude_list` are included
+#
+#    Note that it's more efficient (and API-friendly) to do include specific
+#    Targets from inventory, using the `gitlab_inventory` plugin's `allow_list`
+plan releng::gitlab::project_repo_mirror(
   TargetSpec $targets = 'gitlab_projects',
   TargetSpec $gh_targets = 'github_repos',
   Sensitive[String[1]] $gitlab_api_token = Sensitive.new(system::env('GITLAB_API_PRIVATE_TOKEN')),
   Sensitive[String[1]] $github_api_token = Sensitive.new(system::env('GITHUB_API_INTEGRATION_TOKEN')),
   Boolean $noop = false,
   Boolean $force = false,
-  Optional[[Array[Variant[String,Regexp]]]] $ignore_list = [ /gitlab-oss/ ],
+  Optional[[Array[Variant[String,Regexp]]]] $exclude_list = [ /gitlab-oss/ ],
   Optional[[Array[Variant[String,Regexp]]]] $include_list = [],
 ){
 
   # Filtered Targets, with the 'gl_project_github_service' fact added
   $gitlab_projects = run_plan(
-    'releng::gitlab_project__filter',
+    'releng::gitlab::project__filter',
     {
       'targets'      => $targets,
-      'ignore_list'  => $ignore_list,
+      'exclude_list'  => $exclude_list,
       'include_list' => $include_list,
     }
   ).with |$gitlab_targets| {
     run_plan(
-      'releng::gitlab_project__matching_github_repos_facts',
+      'releng::gitlab::project__matching_github_repos_facts',
       {
         'targets'          => $gitlab_targets,
         'gh_targets'       => $gh_targets,

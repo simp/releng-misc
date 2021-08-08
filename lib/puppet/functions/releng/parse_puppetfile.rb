@@ -1,10 +1,15 @@
-# Parse Puppetfile contents
+# @summary Return data from each `mod` item in a Puppetfile
 Puppet::Functions.create_function(:'releng::parse_puppetfile') do
+
+  # Return data from each `mod` item in a Puppetfile
+  # @param content Content of Puppetfile
+  # @return [Hash] Data for each `mod` entry (structure: `<path> => <data>`)
   dispatch :parse_puppetfile do
     param 'String', :content
     return_type 'Hash'
   end
 
+  # @api private
   def parse_puppetfile(content)
     Puppet.lookup(:bolt_executor) {}&.report_function_call(self.class.name)
     pdsl = PuppetfileDSLReader.new(content)
@@ -13,10 +18,9 @@ Puppet::Functions.create_function(:'releng::parse_puppetfile') do
     Hash[pdsl.modules.map{|k,v| [v[:mod_rel_path], Hash[v.map{|x,y| [x.to_s,y]} ]] }]
   end
 
+  # Barebones implementation of the Puppetfile DSL
+  # @api private
   class PuppetfileDSL
-    # A barebones implementation of the Puppetfile DSL
-    #
-    # @api private
     @lines = []
     def initialize(librarian)
       @librarian = librarian
@@ -43,6 +47,8 @@ Puppet::Functions.create_function(:'releng::parse_puppetfile') do
   end
 
 
+  # Provides methods to build data structure of Puppetfile `mod` items
+  # @api private
   class PuppetfileDSLReader
 
     attr_reader :modules
@@ -62,24 +68,25 @@ Puppet::Functions.create_function(:'releng::parse_puppetfile') do
     end
 
     def add_module(name, args)
-      rel_path = File.join(@module_dir,name)
+      install_path = (args.is_a?(Hash) && args[:install_path]) || @module_dir
 
-      if args.is_a?(Hash) && install_path = args.fetch(:install_path,false)
-        install_path = install_path
-      else
-        install_path = @module_dir
-      end
+      # R10k-style `mod` dir name, without the namespace from the `mod` entry
+      mod_name = name.split(%r{[-/]}).last
 
-      # emulate r10k's namespace-chopping tendencies
-      mod_rel_path = File.join(File.dirname(rel_path),  rel_path.split(%r{[-/]}).last)
+      # Relative path to local mod dir, using `mod` item's `-<name>` segment
+      # (Useful for cloning `mod` items to the same paths as R10k would)
+      mod_rel_path = File.join(install_path, mod_name)
+
+      # Relative path to local mod dir, using the _unchopped_ `mod` name
+      # (Useful for cloning unique `mod` names w/identical `-<name>` segments)
+      rel_path = File.join(install_path,name)
 
       args ||= {}
       info = args.merge({
         :name         => name,
         :rel_path     => rel_path,
+        :mod_name     => mod_name,
         :mod_rel_path => mod_rel_path,
-        # repos basename, also the second half of the `org-mod_name` convention
-        :mod_name     => File.basename(mod_rel_path),
         :install_path => install_path,
       })
 
@@ -87,6 +94,7 @@ Puppet::Functions.create_function(:'releng::parse_puppetfile') do
       @modules[rel_path]=info
     end
 
+    # Unused (valid in a Puppetfile, but we don't have a use for it)
     def set_forge(location)
     end
 

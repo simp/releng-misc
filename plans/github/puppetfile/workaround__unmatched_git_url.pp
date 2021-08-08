@@ -1,5 +1,7 @@
-# Download all RPMs from GitHub release pages of each `mod` in a Puppetfile.
+# @summary Handles a known issue, where the `clone_url` of two mod items point
+#   to `simp-rsync`
 #
+# @private true
 # @api private
 #
 # @param pf_mod
@@ -9,7 +11,7 @@
 #    `github_inventory` Targets with clone_urls that match mods in
 #    the Puppetfile
 #
-plan releng::puppetfile::github::workaround__unmatched_git_url(
+plan releng::github::puppetfile::workaround__unmatched_git_url(
   TargetSpec $targets = 'github_repos',
   Hash $pf_mod,
   Stdlib::HTTPUrl $git_url,

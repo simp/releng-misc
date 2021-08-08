@@ -1,18 +1,21 @@
 # Download GitHub release attachments from repos specifed in Puppetfile.pinned
 #
 # @param puppetfile
-#    Path or URL to simp-core Puppetfile (e.g., `Puppetfile.pinned`) to identify
-#    git repos and release tags
+#   Path or URL to simp-core Puppetfile (e.g., `Puppetfile.pinned`) to identify
+#   git repos and release tags
 #
 # @param targets
-#    `github_inventory` Targets that repos with clone_urls that match mods in
-#    the Puppetfile
+#   `github_inventory` Targets that repos with clone_urls that match mods in
+#   the Puppetfile
 #
 # @param target_dir
-#    Local directory to download assets into
+#   Local directory to download assets into
 #
 # @param github_api_token
-#    GitHub API token.  Doesn't require any scope for public repos.
+#   GitHub API token.  Doesn't require any scope for public repos.
+#
+# @param exclude_patterns
+#   patterns of filenames to avoid downloading
 #
 plan releng::download_assets_from_puppetfile(
   TargetSpec $targets = 'github_repos',
@@ -24,16 +27,16 @@ plan releng::download_assets_from_puppetfile(
   ],
   Sensitive[String[1]] $github_api_token = Sensitive.new(system::env('GITHUB_API_TOKEN')),
 ){
-  $pf_mods = run_plan( 'releng::puppetfile::data', {
+  $pf_mods = run_plan( 'releng::puppetfile_data', {
     'puppetfile' => $puppetfile,
   })
 
-  $matched_pf_mods = run_plan( 'releng::puppetfile::github::repo_targets', {
+  $matched_pf_mods = run_plan( 'releng::github::puppetfile::repo_targets', {
     'targets' => $targets,
     'pf_mods' => $pf_mods,
   })
 
-  $results = run_plan( 'releng::github_download_release_assets', {
+  $results = run_plan( 'releng::github::download_release_assets', {
     'targets'          => $matched_pf_mods.values,
     'target_dir'       => $target_dir,
     'exclude_patterns' => $exclude_patterns,

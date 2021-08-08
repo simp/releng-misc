@@ -1,6 +1,4 @@
-# Return `github_inventory` Targets that represent each `mod` in a Puppetfile
-#
-# Targets are sourced by matching a mod's `:git` to a `clone_url` from `$targets`
+# Return `github_inventory` Targets matching a Puppetfile's `mod` items
 #
 # Each github_inventory+mod Target includes Puppetfile-specific fact(s):
 #
@@ -8,21 +6,29 @@
 #   * `_release_tag` (for mods with a `:tag`)
 #   * `_tracking_branch` (for mods with a `:branch`)
 #
+# @summary
+#   Return `github_inventory` Targets matching a Puppetfile's `mod` items
+#
+# @note
+#   Targets are sourced from `$targets` by matching `clone_url` to a mod's `:git`
+#
 # @param targets
 #    `github_inventory` Targets with clone_urls expected to match the
 #    Puppetfile mod' :git urls
 #
 # @param puppetfile
 #    Path or URL to simp-core Puppetfile.<method> that identifies mods'
-#    (github repo) clone_url and release tags
+#    (github repo) clone_url and release tags.
+#
+#    This parameter is not used when a value for `$pf_mods` is supplied
 #
 # @param pf_mods
 #    Data from a Puppetfile's '`mod`' entries
 #
-plan releng::puppetfile::github::repo_targets(
+plan releng::github::puppetfile::repo_targets(
   TargetSpec $targets = 'github_repos',
   Variant[Stdlib::HTTPUrl,Stdlib::Absolutepath] $puppetfile = 'https://raw.githubusercontent.com/simp/simp-core/master/Puppetfile.pinned',
-  Hash $pf_mods = run_plan( 'releng::puppetfile::data', { 'puppetfile' => $puppetfile }),
+  Hash $pf_mods = run_plan( 'releng::puppetfile_data', { 'puppetfile' => $puppetfile }),
 ){
   $github_repos = get_targets($targets)
 
@@ -34,7 +40,7 @@ plan releng::puppetfile::github::repo_targets(
        $git_url  ==  $gh_repo.facts['clone_url'].regsubst(/\.git$/,'')
      }.releng::empty2undef.lest || {
        log::error( "ERROR: no GitHub repo's clone_url matched Puppetfile mod '${pf_mod['name']} (${pf_mod['git']})" )
-       $workaround = run_plan( 'releng::puppetfile::github::workaround__unmatched_git_url', {
+       $workaround = run_plan( 'releng::github::puppetfile::workaround__unmatched_git_url', {
          'pf_mod' => $pf_mod,
          'git_url' => $git_url,
        })

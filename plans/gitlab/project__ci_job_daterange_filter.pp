@@ -1,7 +1,7 @@
 # Returns a hash of 'project name' => [ job hashes  ] for all project' CI jobs
 # within a certain date range
 #
-# This plan is intended to be run by other plans as a sub plan.
+# @note This plan is intended to be run by other plans as a sub plan.
 #
 # @param targets
 #    By default: `gitlab_projects` group from inventory
@@ -15,7 +15,8 @@
 #        Dial this back when hitting API rate-limits, risks missing jobs
 #
 # @private true
-plan releng::gitlab_project__ci_job_daterange_filter(
+# @api private
+plan releng::gitlab::project__ci_job_daterange_filter(
   TargetSpec $targets = 'gitlab_projects',
   Sensitive[String[1]] $gitlab_api_token = Sensitive.new(system::env('GITLAB_API_PRIVATE_TOKEN')),
   String $start_at = '2021-02-11T13:00:00.000Z',
@@ -28,7 +29,7 @@ plan releng::gitlab_project__ci_job_daterange_filter(
   $gitlab_projects = get_targets($targets)
 
   $job_results = run_task_with(
-    'releng::gitlab_api_request',
+    'releng::gitlab::api_request',
     $gitlab_projects,
     "Gathering CI jobs data for GitLab projects",
     { '_catch_errors' => true }

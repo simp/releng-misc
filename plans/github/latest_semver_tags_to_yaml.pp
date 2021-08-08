@@ -1,5 +1,5 @@
 # Report the highest SemVer tag for each repo (that has SemVer tags), including
-# information release (if a release exists for that tag) and uploaded assets
+# release data (if a release exists for that tag) and uploaded assets
 #
 # @summary Write the latest_semver_tags to a local YAML file
 #
@@ -14,13 +14,19 @@
 # @param display_result
 #    When `true`, plan prints result using `out::message`
 #
+# @param output_file
+#    Path of report file for be generated
+#
 # @param return_result
 #    When `true`, plan returns data in a ResultSet
 #
-plan releng::github_latest_semver_tags_to_yaml (
+plan releng::github::latest_semver_tags_to_yaml (
   TargetSpec           $targets = 'github_repos',
   Sensitive[String[1]] $github_api_token = Sensitive.new(system::env('GITHUB_API_TOKEN')),
-  Stdlib::Absolutepath $output_file = [ system::env('PWD'), Timestamp.new.strftime( 'github_repos_latest_semver_tags-%Y%m%d-%H:%M:%S.yaml' )].join('/'),
+  Stdlib::Absolutepath $output_file = [ 
+    system::env('PWD'), 
+    Timestamp.new.strftime( 'github_repos_latest_semver_tags-%Y%m%d-%H:%M:%S.yaml' )
+  ].join('/'),
   Boolean $display_result = true,
   Boolean $return_result  = false,
 ) {
