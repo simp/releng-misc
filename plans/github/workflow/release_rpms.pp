@@ -66,8 +66,8 @@ plan releng::github::workflow::release_rpms(
     'dry_run'            => $dry_run ? { true => 'yes', default => 'no' },
   }.with |$inputs| {
     $target_repo ? {
-      true    => $inputs + { 'target_repo' => $target_repo },
-      default => $inputs,
+      NotUndef => $inputs + { 'target_repo' => $target_repo },
+      default  => $inputs,
     }
   }
 
