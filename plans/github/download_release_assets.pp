@@ -31,7 +31,7 @@ plan releng::github::download_release_assets(
 ){
   $github_repos = get_targets($targets)
 
-  $releases_data = run_plan(
+  $releases_repos = run_plan(
     'releng::github::releases_data',
     $github_repos, {
     'github_api_token' => $github_api_token,
@@ -47,31 +47,20 @@ plan releng::github::download_release_assets(
   # ============================================================================
   # For each release, download all assets (except for filtered-out assets)
   # ============================================================================
-  $release_download_results = $releases_data.map |$repo_name, $release_data| {
-
-    # Skip repo if we don't have release data for it
-    # --------------------------------------------------------------------------
-    if $release_data =~ Undef {
-       $expected_tag = $github_repos.filter |$t| { $t.name == $repo_name }[0].then |$t| {
-         $t.facts['_release_tag']
-       }.lest || { '???' }
-       $expected_relpage = $github_repos.filter |$t| { $t.name == $repo_name }[0].then |$t| {
-         $t.facts['html_url'].then |$x| { "$x/releases" }
-       }.lest || { '???' }
-
-       $err = "Expected ${repo_name} release with tag '${expected_tag}' but couldn't find it!"
+  $release_download_results = $github_repos.map |$repo| {
+    $release_data = $repo.facts['_release_data'].lest || {
+       # Skip repos without _release_data (nothing to download)
+       $expected_tag = $repo.facts['_release_tag'].lest || { '???' }
+       $err = "Expected ${repo.name} release with tag '${expected_tag}' but couldn't find it!"
        log::error( "UNEXPECTED ERROR: $err")
-       $msg = "SKIPPING ${repo_name}: $err"
+       $msg = "SKIPPING ${repo.name}: $err"
        log::warn( "  >> ${msg}" )
        ctrl::sleep(3)
-
-       next([
-         $repo_name,
-         Result.new($localhost, { 'status' => 'skipped',  'skipped?' => $msg })
-       ])
+       $result =  Result.new($localhost, { 'status' => 'skipped',  'skipped?' => $msg })
+       next([ $repo.name, $result ])
     }
 
-    out::message("== $repo_name (Release: ${release_data['tag_name']})")
+    out::message("== ${repo.name} (Release: ${release_data['tag_name']})")
     out::verbose("  -- Release page: ${release_data['html_url']}")
 
     # Download repo's assets
@@ -101,25 +90,25 @@ plan releng::github::download_release_assets(
       )
       [ $asset['name'], $dl_result ]
     }.with |$kv_pairs| { Hash($kv_pairs) }
-    [$repo_name, $asset_dl_results]
+    [$repo.name, $asset_dl_results]
   }.with |$kv_pairs| { Hash($kv_pairs) }
 
   # Review issues with targets
   # ----------------------------------------------------------------------------
-  $repos_without_release_assets_fact = $github_repos.filter |$t| { !$t.facts.get('_release_assets') }
-  $repos_without_release_assets = ($github_repos - $repos_without_release_assets_fact).filter |$t| {
-    $t.facts.get('_release_assets').lest || {[]}.empty
+  $repos_without_release_data_fact = $github_repos.filter |$t| { !$t.facts.get('_release_data') }
+  $repos_without_release_assets = ($github_repos - $repos_without_release_data_fact).filter |$t| {
+    $t.facts.get('_release_data.assets').lest || {[]}.empty
   }
   $repos_with_few_release_assets = ($github_repos - $repos_without_release_assets).filter |$t| {
-    $t.facts.get('_release_assets').lest || {[]}.size < $min_expected_assets
+    $t.facts.get('_release_data.assets').lest || {[]}.size < $min_expected_assets
   }
 
   # ============================================================================
   # Report what happened!
   # ============================================================================
-  if $repos_without_release_assets_fact.size > 0 {
-    log::error("??ERROR??: Found ${repos_without_release_assets_fact.size} repos did not resolve a _release_assets fact")
-    $repos_without_release_assets_fact.each |$t| {
+  if $repos_without_release_data_fact.size > 0 {
+    log::error("??ERROR??: Found ${repos_without_release_data_fact.size} repos did not resolve a _release_data fact")
+    $repos_without_release_data_fact.each |$t| {
       $err = @("NO_RELEASE_ASSETS_TAG_MSG")
          - ${t.name}
          _release_tag: ${t.facts.get('_release_tag').lest || {'???'}}
@@ -146,7 +135,7 @@ plan releng::github::download_release_assets(
   if (!$repos_with_few_release_assets.empty) {
     log::error("ERROR: Found ${repos_with_few_release_assets.size} repos with fewer release assets than expected ${min_expected_assets}")
     $repos_with_few_release_assets.each |$t| {
-      $asset_names = $t.facts.get('_release_assets').lest || {[]}.map |$a| { $a['name'] }
+      $asset_names = $t.facts.get('_release_data.assets').lest || {[]}.map |$a| { $a['name'] }
       log::warn( "ERROR: Release assets for ${t.name} = ${asset_names}; less than expected (${min_expected_assets})")
     }
     if $debug_problems { debug::break() }
