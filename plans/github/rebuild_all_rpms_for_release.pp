@@ -30,7 +30,7 @@ plan releng::github::rebuild_all_rpms_for_release (
     'github_api_token' => $github_api_token,
   })
 
-  $trigger_results = $github_repos.map |$pf_path, $repo| {
+  $trigger_results = $github_repos.map |$repo| {
     $skip_repo = 'simp/simp-doc'
     if $skip_repo == $repo.facts['full_name'] {
       log::warn("=== SKIPPING trigger for ${skip_repo} because it's the skip repo")
@@ -51,17 +51,17 @@ plan releng::github::rebuild_all_rpms_for_release (
         'trigger_ref'              => $trigger_ref,
         'github_api_token'         => $github_api_token,
       }
-      out::message("Rebuilding ${t.name} ${tag} on centos8:")
-      $trigger_result = run_plan('releng::github::workflow::release_rpms', $github_repos, $args)
+      out::message('')
+      out::message("======= Rebuilding ${t.name} ${tag} on centos8:")
+      $trigger_result1 = run_plan('releng::github::workflow::release_rpms', $github_repos, $args)
 
-      out::message("Rebuilding ${t.name} ${tag} on centos7:")
-      $trigger_result = run_plan('releng::github::workflow::release_rpms', $github_repos, $args + {
+      out::message("------- Rebuilding ${t.name} ${tag} on centos7:")
+      $trigger_result2 = run_plan('releng::github::workflow::release_rpms', $github_repos, $args + {
         'build_container_os' => 'centos7',
         'wipe_all_assets_first'    => false,
         'clobber_identical_assets' => false,
       })
-      sleep(2)
-      debug::break()
+      ctrl::sleep(120)
     }
   }
 
