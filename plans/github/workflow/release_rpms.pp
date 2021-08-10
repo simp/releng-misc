@@ -1,4 +1,4 @@
-# Trigger `release_rpms.yml` workflow
+# Trigger `release_rpms.yml` workflow for a single repo
 #
 # @param trigger_org
 #   Org for `trigger_repo`

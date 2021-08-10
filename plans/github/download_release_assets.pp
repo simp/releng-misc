@@ -1,10 +1,12 @@
-# Downloads release asset uploaded to specific GitHub release pages
+# Downloads release assets uploaded to specified GitHub release pages
 #
 # @param targets
 #    By default: `github_repos` group from inventory
 #
 #    If a target has the fact '_release_tag', that tag will be used to identify
-#    the GitHub release to download.  Otherwise, the latest release will be downloaded.
+#    the GitHub release to download.  Otherwise, the latest release will be
+#    downloaded.
+#
 #    FIXME it's not yet certain what best course should be when no tag is given; see comments in code
 #
 # @param target_dir
@@ -29,67 +31,10 @@ plan releng::github::download_release_assets(
 ){
   $github_repos = get_targets($targets)
 
-  $releases_resultset = run_task_with(
-    'http_request', $github_repos, "Get GitHub releases data for all repo targets"
-  ) |$repo_target| {
-    {
-      'base_url' => $repo_target.facts['releases_url'].releng::expand_uri( {} ),
-      'method'   => 'get',
-      'headers' => {
-        'Accept'        => 'application/vnd.github.v3+json',
-        'Authorization' => "token ${github_api_token.unwrap}",
-      },
-      'json_endpoint' => true
-    }
-  }
-
-  $release_assets = Hash( $releases_resultset.ok_set.map |$result| {
-    $rel_data = $result.value['body'].filter |$rel| {
-      # keep !$rel['prerelease'], because we only grab when the pupmod has a branch instead of tag
-      !$rel['draft']
-    }.with |$rels| {
-      $result.target.facts['_release_tag'].then |$rel_tag| {
-        $rels.filter |$rel| { $rel['tag_name'] == $rel_tag }.then |$x| { $x[0] }.lest || {
-          $msg = "ERROR: Expected ${result.target.name} release with tag '${rel_tag}' but couldn't find it!"
-          log::error($msg)
-          false
-        }
-      }.lest || {
-        # FIXME : when no release_tag is given, should we:
-        #    - fail
-        #    - take the latest release tag along the tracking branch (we may not know it)
-        #    - take the latest release tag along the default branch
-        #    - take the latest release tag, period
-        #    - do something fancy (tag version/range validation, etc)
-        #
-        # ^^ When answered: should/which of these behaviors should be determined by plan parameters?
-
-        $t = $result.target
-        $t.facts.get('_tracking_branch').then |$branch| {
-          if $branches_fall_back_to_latest_release {
-            log::error("${t.name} specifies no release tag")
-            # TODO this should probably find the latest release along the tracking branch
-            $fallback_tag = $rels[0].get('tag_name')
-            $result.target.add_facts({'_fallback_release_tag' => $fallback_tag})
-            log::warn("${t.name} uses tracking branch '${branch}'; falling back to latest tag '${fallback_tag}'")
-            $rels[0]  # take the first result (most recent release) # FIXME not necessarily what we want; see above
-          }
-        }.lest || {
-          $msg = "ERROR: ${t.name} has NO release tag or tracking branch!"
-          log::error($msg)
-          ## debug::break()
-          ## fail_plan($error)
-        }
-      }
-    }.with |$rel| {
-      if $rel {
-        $rel.filter |$key,$v| { $key in ['assets', 'id','tag_name','assets', 'url', 'html_url'] }
-      }
-    }
-
-    if $rel_data { $result.target.add_facts({'_release_assets' => $rel_data['assets']}) }
-
-    [$result.target.name, $rel_data]
+  $releases_data = run_plan(
+    'releng::github::releases_data',
+    $github_repos, {
+    'github_api_token' => $github_api_token,
   })
 
 
@@ -97,9 +42,16 @@ plan releng::github::download_release_assets(
     file{ $target_dir: ensure => directory }
   }
 
-  # For each release download each asset (filter on/out el7? el8? src?)
-  $release_download_results = $release_assets.map |$repo_name, $release| {
-    if $release =~ Undef {
+  $localhost = get_target('localhost')
+
+  # ============================================================================
+  # For each release, download all assets (except for filtered-out assets)
+  # ============================================================================
+  $release_download_results = $releases_data.map |$repo_name, $release_data| {
+
+    # Skip repo if we don't have release data for it
+    # --------------------------------------------------------------------------
+    if $release_data =~ Undef {
        $expected_tag = $github_repos.filter |$t| { $t.name == $repo_name }[0].then |$t| {
          $t.facts['_release_tag']
        }.lest || { '???' }
@@ -107,37 +59,44 @@ plan releng::github::download_release_assets(
          $t.facts['html_url'].then |$x| { "$x/releases" }
        }.lest || { '???' }
 
-       # TODO optionally skip and report repos without releases
        $err = "Expected ${repo_name} release with tag '${expected_tag}' but couldn't find it!"
        log::error( "UNEXPECTED ERROR: $err")
        $msg = "SKIPPING ${repo_name}: $err"
        log::warn( "  >> ${msg}" )
        ctrl::sleep(3)
+
        next([
          $repo_name,
-         Result.new(get_target('localhost'), { 'status' => 'skipped',  'skipped?' => $msg })
+         Result.new($localhost, { 'status' => 'skipped',  'skipped?' => $msg })
        ])
     }
-    out::message("== $repo_name (Release: ${release['tag_name']})")
-    out::verbose("  -- Release page: ${release['html_url']}")
-    $assets = $release['assets']
-    $asset_dl_results = $assets.map |$asset| {
 
-      # Reject downloading some files based on exclude patterns
+    out::message("== $repo_name (Release: ${release_data['tag_name']})")
+    out::verbose("  -- Release page: ${release_data['html_url']}")
+
+    # Download repo's assets
+    # --------------------------------------------------------------------------
+    $asset_dl_results = $release_data['assets'].map |$asset| {
+
+      # Reject downloading files that match exclude patterns
+      # ------------------------------------------------------------------------
       if ($exclude_patterns.any |$substr| { $asset['name'] =~ $substr }) {
         $msg = "SKIPPING ${asset['name']} because it matched exclude_patterns"
         log::warn( "  -- ${msg}" )
         next([
           $asset['name'],
-          Result.new(get_target('localhost'), { 'status' => 'skipped',  'skipped?' => $msg })
+          Result.new($localhost, { 'status' => 'skipped',  'skipped?' => $msg })
         ])
       }
+
+      # Download asset files
+      # ------------------------------------------------------------------------
       out::message("  -- Asset: ${asset['name']}")
       log::info("  -- Asset URL: ${asset['browser_download_url']}")
 
       $dl_result = run_command(
         "curl -o '${target_dir}/${asset['name']}' -sS -L -H '${asset['content']}' '${asset['browser_download_url']}'",
-        'localhost',
+        $localhost,
         "Download ${asset['browser_download_url']}"
       )
       [ $asset['name'], $dl_result ]
@@ -146,6 +105,7 @@ plan releng::github::download_release_assets(
   }.with |$kv_pairs| { Hash($kv_pairs) }
 
   # Review issues with targets
+  # ----------------------------------------------------------------------------
   $repos_without_release_assets_fact = $github_repos.filter |$t| { !$t.facts.get('_release_assets') }
   $repos_without_release_assets = ($github_repos - $repos_without_release_assets_fact).filter |$t| {
     $t.facts.get('_release_assets').lest || {[]}.empty
@@ -154,6 +114,9 @@ plan releng::github::download_release_assets(
     $t.facts.get('_release_assets').lest || {[]}.size < $min_expected_assets
   }
 
+  # ============================================================================
+  # Report what happened!
+  # ============================================================================
   if $repos_without_release_assets_fact.size > 0 {
     log::error("??ERROR??: Found ${repos_without_release_assets_fact.size} repos did not resolve a _release_assets fact")
     $repos_without_release_assets_fact.each |$t| {

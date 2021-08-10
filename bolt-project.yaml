@@ -25,3 +25,5 @@ modules:
   - puppetlabs/yaml
   - nwops/debug
   - puppet/format
+  - name: puppetlabs/http_request
+    version_requirement: ">= 0.3.1" # Required to trigger GHA workflows

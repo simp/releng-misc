@@ -23,8 +23,8 @@
 plan releng::github::latest_semver_tags_to_yaml (
   TargetSpec           $targets = 'github_repos',
   Sensitive[String[1]] $github_api_token = Sensitive.new(system::env('GITHUB_API_TOKEN')),
-  Stdlib::Absolutepath $output_file = [ 
-    system::env('PWD'), 
+  Stdlib::Absolutepath $output_file = [
+    system::env('PWD'),
     Timestamp.new.strftime( 'github_repos_latest_semver_tags-%Y%m%d-%H:%M:%S.yaml' )
   ].join('/'),
   Boolean $display_result = true,

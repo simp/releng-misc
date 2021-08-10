@@ -4,6 +4,7 @@
 # The following directive installs modules to the managed moduledir.
 moduledir '.modules'
 
+mod 'puppetlabs/http_request', '0.3.1'
 mod 'puppet/format', '1.0.0'
 mod 'nwops/debug', '0.2.0'
 mod 'puppetlabs/yaml', '0.2.0'

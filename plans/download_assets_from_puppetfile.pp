@@ -31,24 +31,20 @@ plan releng::download_assets_from_puppetfile(
     'puppetfile' => $puppetfile,
   })
 
-  $matched_pf_mods = run_plan( 'releng::github::puppetfile::repo_targets', {
+  $puppetfile_repos = run_plan( 'releng::github::puppetfile::repo_targets', {
     'targets' => $targets,
     'pf_mods' => $pf_mods,
   })
 
   $results = run_plan( 'releng::github::download_release_assets', {
-    'targets'          => $matched_pf_mods.values,
+    'targets'          => $puppetfile_repos.values,
     'target_dir'       => $target_dir,
     'exclude_patterns' => $exclude_patterns,
     'github_api_token' => $github_api_token,
   })
 
   $pf_mods.each |$k,$v| {
-    $t = $matched_pf_mods[$k]
-    # $t.facts['_fallback_release_tag']
-    # $t.facts['_release_tag']
-    # $t.facts['_tracking_branch']
-    # $t.facts['_release_assets'].size
+    $t = $puppetfile_repos[$k]
     $gh_release_tag = $t.facts['_release_tag'].lest || {
       $t.facts['_fallback_release_tag'].then |$x| { "${x} (fallback)" }
     }

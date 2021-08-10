@@ -37,6 +37,11 @@ plan releng::github::puppetfile::repo_targets(
      $git_url = $pf_mod['git'].regsubst(/\.git$/,'')
 
      $matching_gh_repos = $github_repos.filter |$gh_repo| {
+       if $gh_repo.facts['clone_url'] !~ String {
+         # NOTE this will happen if $targets weren't github_inventory targets
+         log::error("ERROR: clone_url is not a String!  Investigate:")
+         debug::break()
+       }
        $git_url  ==  $gh_repo.facts['clone_url'].regsubst(/\.git$/,'')
      }.releng::empty2undef.lest || {
        log::error( "ERROR: no GitHub repo's clone_url matched Puppetfile mod '${pf_mod['name']} (${pf_mod['git']})" )
