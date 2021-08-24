@@ -17,6 +17,9 @@
 # @param exclude_patterns
 #   patterns of filenames to avoid downloading
 #
+# @param return_result
+#    When `true`, plan returns data in a ResultSet
+#
 plan releng::download_assets_from_puppetfile(
   TargetSpec $targets = 'github_repos',
   Variant[Stdlib::HTTPUrl,Stdlib::Absolutepath] $puppetfile = 'https://raw.githubusercontent.com/simp/simp-core/master/Puppetfile.pinned',
@@ -26,14 +29,15 @@ plan releng::download_assets_from_puppetfile(
     '\.el7.*\.rpm$',
   ],
   Sensitive[String[1]] $github_api_token = Sensitive.new(system::env('GITHUB_API_TOKEN')),
+  Boolean $return_result  = false,
 ){
-  $pf_mods = run_plan( 'releng::puppetfile_data', {
+  $puppetfile_mods = run_plan( 'releng::puppetfile_data', {
     'puppetfile' => $puppetfile,
   })
 
   $puppetfile_repos = run_plan( 'releng::github::puppetfile::repo_targets', {
     'targets' => $targets,
-    'pf_mods' => $pf_mods,
+    'pf_mods' => $puppetfile_mods,
   })
 
   $results = run_plan( 'releng::github::download_release_assets', {
@@ -43,16 +47,20 @@ plan releng::download_assets_from_puppetfile(
     'github_api_token' => $github_api_token,
   })
 
-  $pf_mods.each |$k,$v| {
+  $puppetfile_mods.each |$k,$v| {
     $t = $puppetfile_repos[$k]
-    $gh_release_tag = $t.facts['_release_tag'].lest || {
-      $t.facts['_fallback_release_tag'].then |$x| { "${x} (fallback)" }
+    $gh_release_tag = $t.facts.get('_release_data.tag_name').with |$tag_name| {
+       $t.facts['_fallback_release_tag'].then |$x| {
+         "${tag_name} (fallback)"
+       }.lest || {
+         $tag_name
+       }
     }
-    $num_assets = $t.facts['_release_assets'].then |$x| { $x.size }.lest || { '---' }
+    $num_assets = $t.facts.get('_release_data.assets').then |$x| { $x.size }.lest || { '---' }
     $name = $v['repo_name']
     $pf_tag = $v['tag'].lest || { "${v['branch']} (branch)" }
     out::message( "${name},${pf_tag},${gh_release_tag},${num_assets}" )
   }
-  debug::break()
-  return($results)
+
+  if $return_result { return($results) }
 }
