@@ -30,7 +30,7 @@ RUN yumdownloader puppetserver
 
 RUN rpm -i --nodigest --nofiledigest puppetserver*.rpm
 
-RUN version=`rpm -q --qf="%{version}" puppetserver`; rpmrebuild --batch --change-spec-preamble="sed -e 's/^Version:.*/Version: ${version}.1/'" puppetserver
+RUN dist=`rpm --eval '%{dist}'`; release=`rpm -q --qf="%{release}" puppetserver | cut -f1 -d'.'`; rpmrebuild --batch --release="${release}.SIMP.1${dist}" puppetserver
 
 RUN echo '############'; echo -n "Your file is at:"; find rpmbuild/RPMS -name "*.rpm"; echo '##########'
 
