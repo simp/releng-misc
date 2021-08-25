@@ -73,7 +73,7 @@ bolt_lint:
     # At least some of gitlab.com's runners appear to clone while umask 000 >:\
     - 'chmod o-w .'
     - 'BOLT_DISABLE_ANALYTICS=yes bolt --version || :'
-    - 'BOLT_DISABLE_ANALYTICS=yes bolt plan show | grep releng::'
+    - 'BOLT_DISABLE_ANALYTICS=yes bolt plan show --inventory inventory--empty.yaml | grep releng::'
 
 # Travis CI testing was disabled.
 #-----------------------------------------------------------------------
