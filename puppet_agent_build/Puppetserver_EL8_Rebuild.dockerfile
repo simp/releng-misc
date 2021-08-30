@@ -1,18 +1,16 @@
-# If you want to save your container for future use, you use use the `docker
-# commit` command
-#   * docker commit <running container ID> puppet_agent_build
-#   * docker run -it puppet_agent_build
+#  This docker file will will download and rebuild the latest
+#  puppet 6 puppetserver package for EL8 so the package is signed
+#  correctly for installing on a FIPS system.
 #
-# If using buildah, you probably want to build this as follows since various
-# things might fail over time:
-#   * buildah bud --layers=true -f <filename> .
+#  To run and  copy the file:
+#  * docker build -f ./Puppetserver_EL8_Rebuild.dockerfile -t psrv_rpm .
+#  * docker run --name=prpm psrv_rpm
+#  * docker cp prpm:/root/<where it tells you the file is> <where you want the file>
 #
-# You can choose to build a specific version of puppet by setting the
-# PUPPET_VERSION environment variable to a valid git reference in the
-# puppet-agent repository.
+#  Then remove the container and images
+#   * docker container rm prpm
+#   * docker rmi psrv_rpm
 #
-# By default, the latest tag will be built.
-
 # Build upstream Ruby
 FROM centos:8
 ENV container docker
