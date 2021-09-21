@@ -1,10 +1,16 @@
-# This is the structure of a simple plan. To learn more about writing
-# Puppet plans, see the documentation: http://pup.pt/bolt-puppet-plans
-
-# The summary sets the description of the plan that will appear
-# in 'bolt plan show' output. Bolt uses puppet-strings to parse the
-# summary and parameters from the plan.
-# @summary A plan created with bolt plan new.
+# Trigger GitHub Actions to rebuild all RPMs attached to components' release pages
+#
+# @param puppetfile
+#   URL to Puppetfile containing the individual components and release versions
+#   to rebuild
+# @param trigger_repo
+#   GitHub repo containing the release_rpms workflow that will rebuild the
+#   other repos' RPMs
+#
+# @param trigger_org  GitHub org for `$trigger_repo`
+# @param trigger_ref  GitHub ref of release_rpms workflow in `$trigger_repo`
+# @param skip_repos   List of Puppetfile repos to ignore
+#
 # @param targets The targets to run on.
 plan releng::github::rebuild_all_rpms_for_release (
   TargetSpec $targets = 'github_repos',
