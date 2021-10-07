@@ -65,11 +65,10 @@ plan releng::github::rebuild_all_rpms_for_release (
     $trigger_result2 = run_plan('releng::github::workflow::release_rpms', $github_repos, $args + {
       'build_container_os'       => 'centos7',
       'wipe_all_assets_first'    => false,
-      'clobber_identical_assets' => false,
+      'clobber_identical_assets' => true,
     })
   }
 
   out::message("FINIS")
-  debug::break()
-  $rebuild_results
+  $trigger_results
 }
