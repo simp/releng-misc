@@ -49,6 +49,9 @@ plan releng::github::puppetfile::repo_targets(
          'pf_mod' => $pf_mod,
          'git_url' => $git_url,
        })
+       unless  $git_url  == 'https://github.com/simp/simp-rsync' {
+        debug::break()
+       }
        $workaround
      }
 

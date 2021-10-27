@@ -29,6 +29,8 @@ plan releng::github::releases_data (
   TargetSpec $targets = 'github_repos',
   Sensitive[String[1]] $github_api_token = Sensitive.new(system::env('GITHUB_API_TOKEN')),
   Boolean $branches_fall_back_to_latest_release = true,
+  # TODO: make sure callers know about this and set the right value
+  Boolean $fallbacks_include_prereleases = $branches_fall_back_to_latest_release,
 ) {
   $github_repos = get_targets($targets)
 
@@ -49,6 +51,7 @@ plan releng::github::releases_data (
   $releases_resultset.ok_set.each |$result| {
     $t = $result.target
     $rel_data = $result.value['body'].filter |$rel| { !$rel['draft'] }.with |$rels| {
+
       $t.facts['_release_tag'].then |$rel_tag| {
         $rels.filter |$rel| { $rel['tag_name'] == $rel_tag }.then |$x| { $x[0] }.lest || {
           $msg = "ERROR: Expected ${t.name} release with tag '${rel_tag}' but couldn't find it!"
@@ -59,23 +62,22 @@ plan releng::github::releases_data (
         $t.facts.get('_tracking_branch').then |$branch| {
           # If the Target knows it's _tracking_branch (from the puppetfile),
           # fall back to the latest release
-          #
-          # FIXME It *should* be "the highest release with a tag on the
-          #        _tracking_branch," but for now that is way too fiddly to
-          #        implement.
-          #
-          if $branches_fall_back_to_latest_release {
-            log::error("${t.name} specifies no release tag")
-            # TODO this should probably find the latest release along the tracking branch
-            $fallback_tag = $rels[0].get('tag_name')
-            $t.add_facts({'_fallback_release_tag' => $fallback_tag})
-            log::warn("${t.name} uses tracking branch '${branch}'; falling back to latest tag '${fallback_tag}'")
-            $rels[0]  # take the first result (most recent release) # FIXME not necessarily what we want; see above
-          }
+          if $branches_fall_back_to_latest_release { log::error("${t.name} specifies no release tag") }
+
+
+          # FIXME: doesn't paginate commits yet
+          $headmost_release = run_plan(
+            'releng::github::headmost_release_on_tracking_branch', $t, {
+            'branch'              => $branch,
+            'include_prereleases' => $fallbacks_include_prereleases,
+          })
+          $fallback_tag = $headmost_release['tag_name']
+          $t.add_facts({'_fallback_release_tag' => $fallback_tag})
+          log::warn("${t.name} uses tracking branch '${branch}'; falling back to latest release '${fallback_tag}'")
+          $headmost_release
         }.lest || {
           $msg = "ERROR: ${t.name} has NO release tag or tracking branch!"
           log::error($msg)
-          ## debug::break()
           ## fail_plan($error)
         }
       }
