@@ -32,12 +32,19 @@ plan releng::createrepos_from_puppetfile_assets(
     'el7',
     'el7.src',
     'el8.src'
-  ].map |$repo_name| {[
-    $repo_name, {
-      'path'     => "${target_dir}/${repo_name}",
-      'patterns' => $repo_name.split(/\./).map |$x| { ".${x}." },
+  ].map |$repo_name| {
+    $exclude_patterns = $repo_name =~ /\.src/ ? {
+      true    => [],
+      default => ['.src'],
     }
-  ]}.with |$x| { Hash($x) }
+    [
+      $repo_name, {
+        'path'             => "${target_dir}/${repo_name}",
+        'patterns'         => $repo_name.split(/\./).map |$x| { ".${x}." },
+        'exclude_patterns' => $exclude_patterns,
+      }
+    ]
+  }.with |$x| { Hash($x) }
 
   # Download all assets from all repos in Puppetfile.pinned release
   # ----------------------------------------------------------------------------
@@ -57,7 +64,9 @@ plan releng::createrepos_from_puppetfile_assets(
   # ----------------------------------------------------------------------------
   $repos.map |$repo_name, $opts| {
     $ok_files = dir::children($target_dir).filter |$x| {
-      '.asc' in $x or $opts.get('patterns').all |$p| {$p in $x}
+      '.asc' in $x or (
+        $opts.get('patterns').all |$p| {$p in $x} and !$opts.get('exclude_patterns').all |$p| {$p in $x}
+      )
     }
     [$repo_name, $opts.merge({'files' => $ok_files})]
   }.with |$x| { Hash($x) }.with |$repos| {
