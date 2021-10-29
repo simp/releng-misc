@@ -4,10 +4,8 @@
 #    By default: `github_repos` group from inventory
 #
 #    If a target has the fact '_release_tag', that tag will be used to identify
-#    the GitHub release to download.  Otherwise, the latest release will be
-#    downloaded.
-#
-#    FIXME it's not yet certain what best course should be when no tag is given; see comments in code
+#    the GitHub release to download.  Otherwise, the latest release along the
+#    tracking branch will be downloaded.
 #
 # @param target_dir
 #    Local directory to download assets into
